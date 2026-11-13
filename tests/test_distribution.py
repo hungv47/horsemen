@@ -65,6 +65,12 @@ class Distribution(unittest.TestCase):
             distribution.build_skill(self.source, self.output)
         self.assertEqual(before, archive.read_bytes())
 
+    def test_skill_license_cannot_drift(self):
+        (self.source / "horsemen/LICENSE").write_text("Different terms")
+        with self.assertRaises(ValueError):
+            distribution.build_skill(self.source, self.output)
+        self.assertFalse(self.output.exists())
+
     def test_executable_mode_is_preserved(self):
         script = self.source / "horsemen/scripts/horsemen.py"
         script.chmod(0o755)

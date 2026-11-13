@@ -18,15 +18,28 @@ Both use the same checker. The CLI has no runtime dependencies beyond Python
 3.10+ and optional Git. It does **not** change project documents or contact
 outside services. Agent workflows can make changes within your instructions.
 
-## Install the agent skill
+## Get started
 
-Install the skill from this repository using a compatible skills installer:
+Clone this repository once:
 
 ```sh
-bunx skills@1.7.0 add hungv47/horsemen --skill horsemen --copy
+git clone https://github.com/hungv47/horsemen.git
+cd horsemen
 ```
 
-Select the intended agent and installation scope. In a fresh agent session:
+### Use the agent skill
+
+Give your agent's skill installer the repository URL and select `horsemen`.
+The self-contained skill is in the `horsemen/` folder. For a new shared
+Codex installation, you can copy it directly with Python:
+
+```sh
+python3 -c 'from pathlib import Path; from shutil import copytree; copytree("horsemen", Path.home() / ".agents/skills/horsemen")'
+```
+
+This refuses to overwrite an existing installation. For Claude Code, use
+`.claude/skills/horsemen` as the destination. Use your host's documented skill
+folder for other agents. This does not change hook settings. In a fresh session:
 
 ```text
 Use Horsemen to inspect this project. Keep this review read-only.
@@ -36,13 +49,11 @@ For a new project, ask: `Use Horsemen to initialize this project.` Your agent
 uses existing evidence and asks for missing direction and knowledge locations.
 It must not invent them. [Skill instructions](horsemen/SKILL.md).
 
-## Install the CLI
+### Use the CLI
 
-Clone this repository and install into an isolated environment:
+From the same checkout, install into an isolated environment:
 
 ```sh
-git clone https://github.com/hungv47/horsemen.git
-cd horsemen
 python3 -m venv .venv
 .venv/bin/python -m pip install .
 .venv/bin/horsemen inspect /path/to/project

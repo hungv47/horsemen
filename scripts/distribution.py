@@ -50,7 +50,11 @@ def build_skill(root, output):
     license_path = root / "LICENSE"
     if not license_path.is_file() or license_path.is_symlink():
         raise ValueError("A regular LICENSE file is required")
-    files.append(license_path)
+    if "LICENSE" in names:
+        if (root / "horsemen/LICENSE").read_bytes() != license_path.read_bytes():
+            raise ValueError("Skill and project licenses differ")
+    else:
+        files.append(license_path)
     release = version(root)
     # Validate everything before creating the output. Existing builds are never overwritten.
     output.mkdir(parents=True, exist_ok=False)
