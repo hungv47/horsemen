@@ -2,6 +2,8 @@
 
 ## 2026-11-13
 
+- Added direct brain, vision, structure and status commands with read-only reports and explicit single-record local updates. Grouped planning tools under plan while keeping legacy command aliases. [PR #1](https://github.com/hungv47/horsemen/pull/1).
+
 - Restored the original approved cover unchanged and corrected its provenance notes.
 
 - Added a README cover and installation through the skills.sh CLI.
