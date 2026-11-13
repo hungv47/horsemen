@@ -1,19 +1,19 @@
 # Progress
 
-Updated: 2026-11-13 · Stage: building · Health: On track
+Updated: 2026-11-13 · Stage: live · Health: On track
 
 ## Latest day
 
 <details open>
 <summary>Latest day</summary>
 
-Horsemen is being brought into one public project with an agent skill and CLI.
+Horsemen now has one public MIT project for its agent skill and CLI.
 
-Next action: Verify the two packages, then publish the repository and update the collection route.
+Next action: Try the read-only inspection on a real project and use the result to choose the next improvement.
 
-## In progress
+## Shipped
 
-- **One Horsemen project** (2026-11-13): Shared source, one version, simple setup, and verification for both ways to use it.
+- **One Horsemen project** (2026-11-13): Published source, one version, clear setup, and verification for both ways to use it.
 
 ## Decisions
 
@@ -24,13 +24,13 @@ Next action: Verify the two packages, then publish the repository and update the
 
 | Item | Evidence |
 | --- | --- |
-| One Horsemen project | Source, installed CLI, and unpacked-skill checks passed locally on 2026-11-13. Reproduce with [CONTRIBUTING.md](CONTRIBUTING.md). Publication is next. |
+| One Horsemen project | [Public source](https://github.com/hungv47/horsemen) is available. Source, installed CLI, and unpacked-skill checks passed locally on 2026-11-13. Reproduce with [CONTRIBUTING.md](CONTRIBUTING.md). The private skills collection now points here. |
 
 Existing installed copies are unchanged.
 
 ### Gates
 
-- Source, wheel, and unpacked skill checks must pass before publication.
+- Local checks pass. Cross-platform results are visible in [Actions](https://github.com/hungv47/horsemen/actions).
 - Automatic document application and live Drive saves remain unavailable.
 
 </details>

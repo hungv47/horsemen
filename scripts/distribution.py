@@ -38,7 +38,7 @@ def build_skill(root, output):
     for path in sorted((root / "horsemen").rglob("*")):
         if path.is_symlink():
             raise ValueError("Skill source must not contain symlinks")
-        if "__pycache__" in path.parts or path.suffix == ".pyc":
+        if any(part == "__pycache__" or part.endswith(".egg-info") for part in path.parts) or path.suffix == ".pyc":
             continue
         if path.is_file():
             if path.suffix not in {".py", ".md"} and path.name != "LICENSE":
