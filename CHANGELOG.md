@@ -2,6 +2,8 @@
 
 ## 2026-11-13
 
+- Added a README cover and installation through the skills.sh CLI.
+
 - Published one public MIT project for the Horsemen agent skill and CLI.
 - Shared source and version, a self-contained skill bundle, and a CLI wheel.
 - One verification command tests source use, installed CLI use, and unpacked hooks.

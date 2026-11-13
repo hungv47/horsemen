@@ -1,3 +1,5 @@
+![Horsemen — Keep your project in context. Four sculpted paper horses represent Vision, Progress, Brain, and Structure.](assets/cover.png)
+
 # Horsemen
 
 **Pick up a project without reconstructing it from old chats.**
@@ -20,26 +22,17 @@ outside services. Agent workflows can make changes within your instructions.
 
 ## Get started
 
-Clone this repository once:
-
-```sh
-git clone https://github.com/hungv47/horsemen.git
-cd horsemen
-```
-
 ### Use the agent skill
 
-Give your agent's skill installer the repository URL and select `horsemen`.
-The self-contained skill is in the `horsemen/` folder. For a new shared
-Codex installation, you can copy it directly with Python:
+Install with the [skills.sh CLI](https://skills.sh/docs/cli). You need Node.js
+and npm; no repository clone is required:
 
 ```sh
-python3 -c 'from pathlib import Path; from shutil import copytree; copytree("horsemen", Path.home() / ".agents/skills/horsemen")'
+npx skills add hungv47/horsemen --skill horsemen
 ```
 
-This refuses to overwrite an existing installation. For Claude Code, use
-`.claude/skills/horsemen` as the destination. Use your host's documented skill
-folder for other agents. This does not change hook settings. In a fresh session:
+Choose your agent and installation scope when prompted. This installs the
+agent skill, not the standalone Python CLI. Start a fresh agent session:
 
 ```text
 Use Horsemen to inspect this project. Keep this review read-only.
@@ -51,9 +44,11 @@ It must not invent them. [Skill instructions](horsemen/SKILL.md).
 
 ### Use the CLI
 
-From the same checkout, install into an isolated environment:
+For the standalone CLI, clone the repository and install into an isolated environment:
 
 ```sh
+git clone https://github.com/hungv47/horsemen.git
+cd horsemen
 python3 -m venv .venv
 .venv/bin/python -m pip install .
 .venv/bin/horsemen inspect /path/to/project

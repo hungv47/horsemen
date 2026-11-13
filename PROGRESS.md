@@ -13,6 +13,8 @@ Next action: Try the read-only inspection on a real project and use the result t
 
 ## Shipped
 
+- **Easy installation and a project cover** (2026-11-13): The README starts with the skills.sh install command and an illustrated cover.
+
 - **One Horsemen project** (2026-11-13): Published source, one version, clear setup, and verification for both ways to use it.
 
 ## Decisions
@@ -24,6 +26,7 @@ Next action: Try the read-only inspection on a real project and use the result t
 
 | Item | Evidence |
 | --- | --- |
+| Easy installation and a project cover | [README](README.md); skills CLI discovery and a temporary Codex installation matched the source; [cover and prompt](assets/README.md). |
 | One Horsemen project | [Public source](https://github.com/hungv47/horsemen) is available. Source, installed CLI, and unpacked-skill checks passed locally on 2026-11-13. Reproduce with [CONTRIBUTING.md](CONTRIBUTING.md). The private skills collection now points here. |
 
 Existing installed copies are unchanged.

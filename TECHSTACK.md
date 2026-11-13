@@ -9,7 +9,7 @@
 | setuptools 77.0.3 in verification | Build the wheel | Isolated build environment | Packages the shared CLI source |
 | unittest and subprocess | Regression checks | Python standard library | Tests real command results and old hooks |
 | GitHub Actions | Cross-platform verification | Repository workflow | Tests Linux/macOS with Python 3.10/3.14 |
-| Python copytree or an agent skill installer | Copy the skill folder | A new destination or the host installer | Preserves the self-contained skill; direct copying refuses an existing destination |
+| skills.sh CLI (`skills`) | Agent skill installation | Node.js and npm through `npx` | Downloads Horsemen and prompts for agent and scope |
 
 No web frontend, server, database, hosted service, or background worker.
 Provider helpers exist in the skill but have no live account connection by default.
