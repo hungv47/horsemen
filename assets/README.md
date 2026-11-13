@@ -1,7 +1,17 @@
 # Cover
 
-`cover.png` is the README banner. It was generated on 2026-11-13 with the built-in image generation tool and checked for legible text and all four record names. It is a raster image; edit the prompt and generate a new version for design changes.
+`cover.png` is the original owner-approved Horsemen cover, restored on
+2026-11-13 from the supplied PNG without resizing, editing, or regeneration.
+It shows four riders crossing a stone bridge beneath a dramatic sky.
+The project README displays it through the relative path `assets/cover.png`.
 
-## Generation prompt
+## Verification and provenance
 
-Use case: ads-marketing. Asset type: wide GitHub repository cover for Horsemen, a public MIT agent skill and CLI for keeping project context in four Markdown records. Create a refined editorial cover, landscape approximately 2:1, polished dark charcoal and warm ivory with restrained copper accent. Four elegant abstract horse silhouettes rendered as sculptural paper-cut forms across the lower half, distinct but forming one coordinated group, conveying continuity and memory rather than war. Architectural grid, generous negative space, subtle tactile paper grain. Large beautiful legible title text exactly "HORSEMEN". Below it a small clean line exactly "Keep your project in context." Four compact labels along bottom exactly "VISION" "PROGRESS" "BRAIN" "STRUCTURE". Premium restrained typographic composition. No other text, no weapons, no apocalypse imagery, no logos or badges, no gradients resembling generic AI neon. Maintain generous safe margins so it works as a repository README banner.
+- Format: PNG, 1672 × 941 pixels.
+- File size: 2,653,587 bytes.
+- SHA256: `866122d740c8602e0814893b8685c86f310f3e42d9e812c07eb537fe443ee896`.
+- The original generation date, tool, and prompt were not supplied with this
+  transfer. They are not verified here.
+
+The generation prompt previously recorded here described the rejected
+replacement, not this original. It has been removed to avoid false attribution.

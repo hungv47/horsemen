@@ -2,6 +2,8 @@
 
 ## 2026-11-13
 
+- Restored the original approved cover unchanged and corrected its provenance notes.
+
 - Added a README cover and installation through the skills.sh CLI.
 
 - Published one public MIT project for the Horsemen agent skill and CLI.

@@ -1,4 +1,4 @@
-![Horsemen — Keep your project in context. Four sculpted paper horses represent Vision, Progress, Brain, and Structure.](assets/cover.png)
+![Horsemen — four riders on horseback cross a stone bridge beneath a dramatic sky.](assets/cover.png)
 
 # Horsemen
 
