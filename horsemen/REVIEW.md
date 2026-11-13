@@ -49,21 +49,20 @@ final newlines and Unicode separators without corrupting the diff.
 
 There is no `--yes`, embedded approval flag, release credential or automatic
 publish/install/merge workflow. CI has read-only repository permissions.
-The package is marked `Private :: Do Not Upload` to prevent accidental PyPI
-publication. This classifier is a release guard, not a security boundary.
+The project is public under MIT. It has no automatic PyPI publication.
 
 ## Verification and its limits
 
-Reproduction commands are in [CLI-PROTOTYPE.md](CLI-PROTOTYPE.md). The CLI suite
+Reproduction commands are in [CLI.md](CLI.md). The CLI suite
 runs both from source and against a built wheel. It covers no-op/date/mode
 preservation, missing inputs, legacy migration, stale anchors, wrong roots,
 path traversal, symlinks, late batch errors, unsafe approval fields, configured
 Git helpers and review-patch round trips. Existing checker/hook and engine
-suites remain required. The repository verifier also checks original import
-history, package discovery and temporary installed-copy equivalence.
+suites remain required. The unified verifier also checks the skill bundle and installed CLI.
+The original collection keeps its private import history separately.
 
-This is empirical local testing plus a fresh source review, not an independent
-external reviewer approval. The owner plans to assign that reviewer. No live
+Tests establish observed behavior; they do not imply independent reviewer
+approval. No live
 provider save or autonomous agent-host dispatch is claimed.
 
 ## Genuine remaining blockers and deferred integrations

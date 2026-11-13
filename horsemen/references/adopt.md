@@ -20,7 +20,7 @@ preambles). The goal is the current format with no lost information.
 - You may run a fresh, read-only check during migration (a deployment
   status, a live URL, the test suite) and record it with today's date. A
   fresh check can correct a status in either direction; say so in the dated
-  entry. Example from the hungv47-com pilot: two "not shipped" items were
+  entry. For example, in an earlier migration: two "not shipped" items were
   live, and lint failed although tests passed.
 
 ## Steps

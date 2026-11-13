@@ -2,6 +2,7 @@
 import json,os,subprocess,sys,tempfile,unittest
 from pathlib import Path
 from e2e import Env,healthy_project
+from horsemen_core import __version__
 SCRIPTS=Path(__file__).resolve().parent
 class CLI(unittest.TestCase):
     def setUp(self):
@@ -23,7 +24,7 @@ class CLI(unittest.TestCase):
         self.assertEqual(Path(d['report']['root']),self.root.resolve())
     def test_version(self):
         p=self.run_cli('--version'); self.assertEqual(p.returncode,0)
-        self.assertEqual(p.stdout.strip(),'0.1.0a5')
+        self.assertEqual(p.stdout.strip(),__version__)
     def test_help(self):
         for args in (('--help',),('help',)):
             p=self.run_cli(*args); self.assertEqual(p.returncode,0,p.stderr)

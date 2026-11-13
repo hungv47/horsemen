@@ -21,6 +21,7 @@ class Distribution(unittest.TestCase):
         self.root = Path(self.temp.name)
         self.source = self.root / "source"
         shutil.copytree(ROOT / "horsemen", self.source / "horsemen")
+        shutil.copy2(ROOT / "LICENSE", self.source / "LICENSE")
         self.output = self.root / "artifacts"
 
     def test_archive_is_complete_and_reproducible(self):
@@ -33,6 +34,7 @@ class Distribution(unittest.TestCase):
                     self.assertEqual(package.read(str(path.relative_to(self.source))), path.read_bytes())
             self.assertIn("horsemen/scripts/horsemen_core/legacy.py", package.namelist())
             self.assertIn("horsemen/references/templates.md", package.namelist())
+            self.assertEqual(package.read("horsemen/LICENSE"), (ROOT / "LICENSE").read_bytes())
         receipt = json.loads((self.output / "skill-manifest.json").read_text())
         self.assertEqual(receipt["version"], distribution.version(self.source))
         self.assertEqual(receipt["sha256"], hashlib.sha256(archive.read_bytes()).hexdigest())

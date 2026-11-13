@@ -45,10 +45,10 @@ and Python 3.10/3.14, but configured jobs are not proof they passed: check the
 exact revision's results. Windows planning/export is unsupported and fails
 closed when no-follow filesystem operations are unavailable.
 
-No release/upload workflow or credentials are included. The private package
-classifier blocks accidental public PyPI publication. A stable release needs
+The public repository uses MIT. Publishing to PyPI and global installation
+remain separate actions. A stable release needs
 human review, passing exact-revision checks, an agreed support matrix and a
 separate explicit installation/publication decision. There is no auto-merge.
 
-See [prototype usage and design limits](../CLI-PROTOTYPE.md) for commands,
+See [CLI usage and design limits](../CLI.md) for commands,
 JSON states, proof of the write limitation and reproduction steps.

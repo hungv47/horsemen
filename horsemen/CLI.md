@@ -1,7 +1,7 @@
-# Local CLI prototype
+# Command-line guide
 
 An independently runnable, read-only CLI backed by the existing Horsemen
-checker and Git helpers. This is an isolated prototype, not a published release.
+checker and Git helpers. The CLI and agent skill are built from this repository and share one version.
 It has no runtime dependencies beyond Python and optional Git.
 
 ## Try it without installing
@@ -32,13 +32,13 @@ content: do not upload or log it publicly.
 ## Package and test in a virtual environment
 
     python3 -m venv /tmp/horsemen-cli-test
-    /tmp/horsemen-cli-test/bin/python -m pip wheel ./horsemen --no-deps -w /tmp/horsemen-wheels
-    /tmp/horsemen-cli-test/bin/python -m pip install --no-index --no-deps /tmp/horsemen-wheels/horsemen_local_prototype-0.1.0a5-py3-none-any.whl
+    /tmp/horsemen-cli-test/bin/python -m pip wheel ./ --no-deps -w /tmp/horsemen-wheels
+    /tmp/horsemen-cli-test/bin/python -m pip install --no-index --no-deps /tmp/horsemen-wheels/horsemen-0.1.0a6-py3-none-any.whl
     HORSEMEN_CLI=/tmp/horsemen-cli-test/bin/horsemen python3 -B horsemen/scripts/test_cli.py
 
 The build backend downloads setuptools from the official package registry if
-needed. Do not install globally. The declared floor is Python 3.10; this
-prototype was tested on Python 3.14 on macOS, not a version/platform matrix.
+needed. Do not install globally. The declared floor is Python 3.10; the repository verification runs source, installed-wheel, and unpacked-skill
+checks. Inspect the verification receipt for the platforms actually tested.
 
 ## Compatibility and limits
 
@@ -90,9 +90,6 @@ valid plan was produced, even with gaps/conflicts. Inspect the plan status;
 it never means edits were applied or facts verified. Invalid input exits 2.
 Plan output can contain private text: keep it local. There is still no
 inspect-and-update writer, provider connection or approval bridge.
-
-Version 0.1.0a5 was built offline using cached setuptools 84.2.1 and tested
-inside an isolated virtual environment. No global install or network needed.
 
 ## Local application safety decision
 
@@ -158,7 +155,7 @@ The CLI still performs no conditional filesystem or provider writes.
 
 Staging remains separate future work: review the patch in an isolated worktree,
 validate changes there, and explicitly choose any later integration. This
-prototype never creates project branches or review commits automatically.
+CLI never creates project branches or review commits automatically.
 
 ## Release review
 
