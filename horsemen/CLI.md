@@ -1,172 +1,152 @@
 # Command-line guide
 
-An independently runnable, read-only CLI backed by the existing Horsemen
-checker and Git helpers. The CLI and agent skill are built from this repository and share one version.
-It has no runtime dependencies beyond Python and optional Git.
+Read or check one project record, inspect the whole project, or apply one
+explicit local edit. Python 3.10+ is required; Git is optional. The skill and
+CLI share their checker and version. Nothing contacts a provider by default.
 
-## Try it without installing
+## Everyday commands
 
-From this checkout:
+| Command | Result |
+| --- | --- |
+| `horsemen brain` | Read and check BRAIN.md: knowledge locations and access rules |
+| `horsemen vision` | Read and check VISION.md: owner direction |
+| `horsemen structure` | Read and check STRUCTURE.md: project map |
+| `horsemen status` | Read and check PROGRESS.md, or legacy STATUS.md |
+| `horsemen check PATH` | Validate all local records, including cross-record rules |
+| `horsemen inspect PATH` | Check records and show local Git state and progress |
+| `horsemen plan --help` | Setup, migration, edit proposals and review patches |
 
-    PYTHONPATH=horsemen/scripts python3 -B -m horsemen_core --help
-    PYTHONPATH=horsemen/scripts python3 -B -m horsemen_core check /path/to/project --json
-    PYTHONPATH=horsemen/scripts python3 -B -m horsemen_core inspect /path/to/project --json
+Add `--json` for machine-readable output. Named-record commands accept
+`--path PATH`; otherwise they resolve the current project, including from a
+subdirectory. They show the record's content and SHA256 in JSON. They do not
+read other records or update dates. Their findings concern that document only;
+use `check` for relationships between records, including public/private rules.
+If both progress filenames contain real records, `status` fails and asks for
+reconciliation. A legacy-only STATUS.md stays at that path, even on update.
 
-`check` preserves the existing checker rules. `inspect` adds the local progress
-snapshot, current HEAD, branch, changed files and registered worktree listing.
-It does not inspect other worktrees, fetch, contact providers or read PR/CI data.
-Remote and provider states always say `not_checked`. Detached HEAD has a null
-branch. Other null Git fields mean unavailable or not applicable.
+`inspect` lists the current branch, changed files and registered worktrees.
+It does not inspect other worktrees or query PRs, CI, deployments or providers.
+Provider state is `not_checked`, even if BRAIN names Google Drive or another
+knowledge home. A local BRAIN.md is a directory of knowledge, not a copy of
+all its external originals. A named-record command never bulk-syncs those originals.
 
-`help` and `--version` do not read project data. Unknown/unimplemented commands
-fail without writing. The CLI does not execute project scripts or run hooks.
+`--help` and `--version` need no project reads. Unknown commands fail.
+The CLI does not run project scripts or install hooks.
 
-JSON uses `schema_version: 1`, `command`, `status` and `report`. The legacy
-checker report is nested unchanged under `report`. Exit codes: 0 means no
-validation errors, 1 means validation errors, 2 means invalid invocation or
-an operational error. Warnings alone do not fail. Argument syntax errors use
-argparse's stderr output; valid invocations with `--json` use JSON for results
-and operational errors. Output may include private local paths and record
-content: do not upload or log it publicly.
+## Update exactly one record
 
-## Package and test in a virtual environment
+An update needs an explicit edit, not a request to invent fresh content:
 
-    python3 -m venv /tmp/horsemen-cli-test
-    /tmp/horsemen-cli-test/bin/python -m pip wheel ./ --no-deps -w /tmp/horsemen-wheels
-    /tmp/horsemen-cli-test/bin/python -m pip install --no-index --no-deps /tmp/horsemen-wheels/horsemen-0.1.0a6-py3-none-any.whl
-    HORSEMEN_CLI=/tmp/horsemen-cli-test/bin/horsemen python3 -B horsemen/scripts/test_cli.py
+```sh
+horsemen brain --path /path/to/project --json
+horsemen brain update --path /path/to/project --changes edit.json --dry-run --json
+horsemen brain update --path /path/to/project --changes edit.json --exclusive --json
+```
 
-The build backend downloads setuptools from the official package registry if
-needed. Do not install globally. The declared floor is Python 3.10; the repository verification runs source, installed-wheel, and unpacked-skill
-checks. Inspect the verification receipt for the platforms actually tested.
+Use the same syntax for `vision`, `structure`, and `status`. The edit file is
+one JSON object, not the batch format used by the older plan command:
 
-## Compatibility and limits
+```json
+{
+  "file": "BRAIN.md",
+  "source_sha256": "COPY_THE_HASH_FROM_THE_READ_RESULT",
+  "before": "one exact existing span",
+  "after": "its reviewed replacement",
+  "evidence": ["reference supporting this correction"],
+  "owner_agreement": "reference to the owner's approval of this edit"
+}
+```
 
-`scripts/horsemen.py` remains the existing checker/hook entrypoint. It delegates
-to `horsemen_core/legacy.py`, which retains the existing behavior and adds tested support for the latest-day,
-historical-ships and roadmap layout.
-Importers share the same module globals, including the hook deadline. Old
-script command syntax, return codes, caches and hook paths remain intact.
-The new CLI does not install or alter host hooks.
+The filename must match the command. The source hash must match the complete
+current UTF-8 document. `before` must occur exactly once. Empty replacement
+text is allowed. Evidence is required; the CLI cannot verify its truth.
+BRAIN and VISION also require an owner-agreement reference. That reference
+records context; it does not authorize new provider access or override holds.
+An agent must establish current permission before it invokes a saving command.
 
-The package exposes check/inspect/help and plan-only init/update/upgrade. The skill retains
-init/update/upgrade/inspect-and-update/diagram workflows. Do not interpret
-standalone local `inspect` as the skill's full connected-project inspection.
-Missing work includes deeper lifecycle planning, an approval bridge, guarded writes,
-provider authentication, remote inspection and CLI diagram integration.
-The existing Brain/records/Docs modules remain in the skill, unchanged and
-not included in this first wheel. Drive Markdown writes remain unsupported.
-No database, duplicate provider registry, credential store or background
-service was added.
+`--dry-run` validates and shows proposed content without saving. An actual
+save requires `--exclusive`: the caller must ensure no other editor, agent,
+sync client or process writes the target until completion. Do not use it on a
+provider-mounted file or in a shared/synced directory that cannot meet that
+condition. This is a local editing contract, not a provider adapter or an
+approval callback. A plan or exported patch never turns into a write by itself.
 
-Run `test_cli.py` both from source and against the built wheel, then the
-existing `test_techstack.py`, `test_commands.py`, engine tests and `e2e.py`.
-The latter verifies old hooks through the compatibility wrapper.
+The save replaces just the matched span in just the named record. It preserves
+other text, CRLF/LF line endings, a missing final newline and POSIX permission
+bits. No-op edits leave timestamps alone. It does not create missing records,
+refresh dates, update companions or commit anything. File identity changes
+on replacement; extended attributes/ACLs are not promised to be preserved.
 
-## Lifecycle plans (never apply)
+The writer uses a per-record exclusive lock, no-follow reads, source checks,
+a temporary file, atomic replacement and read-back. Existing locks, symlinks,
+hard links, stale hashes, duplicate JSON keys and malformed input fail. It
+cleans up its own temporary file and lock, never somebody else's lock.
+A reported read-back failure after replacement means the save may already
+have occurred: inspect the target before retrying.
 
-    horsemen init /path/to/new-project --plan --json
-    horsemen upgrade /path/to/project --plan --json
-    horsemen update /path/to/project --plan --changes /path/to/changes.json --json
+**Concurrency limit:** atomic replacement is not compare-and-swap. An editor
+that ignores Horsemen's lock can change the file between the final check and
+replacement. `--exclusive` is a caller promise that prevents this situation,
+not a mechanism that defeats arbitrary writers. Without that promise, use
+`--dry-run` or the existing review-patch workflow. No automatic retry or
+rollback is claimed. Local updates require POSIX no-follow file operations;
+Windows is unsupported.
 
-The explicit `--plan` flag is required. Init uses the exact directory supplied,
-not an existing parent project. It lists missing documents and unresolved
-inputs without generating owner intent or provider choices. Existing files
-are preserved. Upgrade proposes review of STATUS→PROGRESS and TECH→TECHSTACK,
-including both-file reconciliation, and lists checker findings. It does not
-rename/delete files or pretend to migrate every old prose format.
+`--provider local` is the default. Other values fail before reading or writing
+local content, directing you to the configured, authorized host workflow.
+There is no CLI provider authentication or live remote save. The existing
+Brain/records libraries retain their revision and host-authorization rules;
+this local command does not weaken or bypass those adapters.
 
-Update needs a JSON object with a `changes` array. Each entry has `file` (a
-supported root document), `before` (one exact nonempty anchor), `after`, and
-a nonempty `evidence` array of references. Optional `owner_agreement` is only
-a reference, never permission. Repeated targets, path traversal, symlink
-targets, unsupported fields and malformed edits fail. Original and proposed
-hashes describe a snapshot, not executable approval. VISION, BRAIN and agent
-instruction changes flag an owner/permission review gap. No supplied edits
-is not proof of freshness.
+## Plans and compatibility
 
-Plan states: `no_change`, `planned`, `needs_input`, `conflict`. Exit 0 means a
-valid plan was produced, even with gaps/conflicts. Inspect the plan status;
-it never means edits were applied or facts verified. Invalid input exits 2.
-Plan output can contain private text: keep it local. There is still no
-inspect-and-update writer, provider connection or approval bridge.
+```sh
+horsemen plan init /path/to/new-project --json
+horsemen plan upgrade /path/to/project --json
+horsemen plan update /path/to/project --changes changes.json --json > plan.json
+horsemen plan export-patch /path/to/project --plan-file plan.json > review.patch
+```
 
-## Local application safety decision
+These commands never apply changes. Init identifies missing documents and
+owner/provider inputs at the exact directory supplied. Upgrade proposes
+STATUS→PROGRESS and TECH→TECHSTACK migration review, including both-file
+reconciliation, without deleting or renaming content. Update takes the existing
+`{"changes": [...]}` format: unique root `file`, exact `before`, `after`,
+nonempty `evidence`, and optional `owner_agreement`. It preserves review gaps
+for owner-controlled documents. Export revalidates source hashes, anchors and
+proposed hashes before printing a unified patch. Shell redirection is the
+caller's choice; never redirect onto an original document.
 
-Automatic local application is intentionally not implemented. There are two
-separate missing guarantees:
+Existing `init/update/upgrade PATH --plan`, `export-patch PATH --plan-file FILE`
+and `help` remain compatibility spellings. Their outputs and exit behavior
+are unchanged, and none gains write behavior. They are omitted from the main
+menu in favor of `plan` and `--help`. No caller was found that justified deleting
+them. The original `python3 <skill>/scripts/horsemen.py` checker/hook entrypoint,
+its return codes, caches and hook paths remain unchanged.
 
-1. **Current authorization.** The CLI has no trusted host callback that can
-   verify the user approved the exact target, content and scope under current
-   holds. A plan, owner-agreement reference, file, environment variable or
-   `--yes` cannot supply that authority. The existing Brain library has a
-   callback interface, but no standalone CLI bridge is wired to it.
-2. **Conditional writes.** The local adapter has no filesystem operation that
-   replaces an arbitrary existing Markdown file only if its current bytes
-   still match the reviewed snapshot. Reading a hash and then using atomic
-   replacement has a race between the check and replacement. Advisory file
-   locks do not protect against editors that do not honor the same lock.
-   Read-back detects an outcome after the fact; it cannot restore a concurrent
-   edit that has already been overwritten. Snapshot hashes alone do not solve
-   this. Multiple files add partial-completion and recovery problems.
+## Output and checks
 
-The tests include a deterministic interleaving in disposable files proving
-that read/check/replace can overwrite a concurrent edit. They also prove that
-apply/yes flags and approval fields do not enable writes, a late invalid batch
-item does not partially apply earlier items, mixed valid/conflicting changes
-leave both originals intact, stale-anchor replanning fails, and no-op planning
-preserves timestamps and file permissions. These prove the current fail-closed
-boundary, not a working transaction engine.
+JSON uses `schema_version: 1`, `command`, `status` and `report`. Named-record
+results add `document`, `content`, `source_sha256`, `mode` and provider limits.
+Updates add proposed content/hash. Modes distinguish `read_only`, `draft`,
+and `local_update`; statuses distinguish `planned`, `updated`, `no_change`
+and failures. After a save, validation can still report errors: `updated`
+means bytes were saved, not that all document facts or formatting are valid.
 
-Next implementation checkpoint: choose and verify a trusted approval transport
-and a storage/write primitive with real revision preconditions. A constrained
-editor protocol would need an explicit exclusive-writer contract; it must not
-be advertised as safe for arbitrary concurrent editors. Until then, use the
-plans for human review and application outside this CLI. No local/cloud write
-fallback, automatic retry, rollback claim or new permission source is added.
+Exit codes: 0 for a completed operation without validation errors, 1 for
+validation errors, 2 for invalid input or operational failure. Legacy plans
+retain exit 0 for a valid proposal even when its status is `needs_input` or
+`conflict`; inspect that status. Syntax errors use argparse stderr; parsed
+requests with `--json` return operational errors as JSON. Output may contain
+private paths and content: keep it local.
 
-Reproduce safety checks with `python3 -B horsemen/scripts/test_cli.py` or set
-`HORSEMEN_CLI` to the isolated installed executable for the same tests.
+From a checkout, replace `horsemen` with
+`PYTHONPATH=horsemen/scripts python3 -B -m horsemen_core`. Run
+`python3 -B horsemen/scripts/test_cli.py` for subprocess tests, or set
+`HORSEMEN_CLI` to an isolated installed executable. Run
+`python3 -B horsemen/scripts/test_documents.py` for simulated storage, race
+and read-back failures. The full repository verifier covers source, installed
+wheel, skill archive and legacy hooks; see the root CONTRIBUTING.md.
 
-## Export a review patch
-
-    horsemen update /path/to/project --plan --changes changes.json --json > plan.json
-    horsemen export-patch /path/to/project --plan-file plan.json > review.patch
-
-Shell redirection is your choice of output destination; the CLI only writes
-to stdout. Choose a new review filename, not an original document. It never
-opens or overwrites an output file, applies a patch, creates a branch or commit,
-or changes the original project. Plan and patch text may contain private data.
-
-Export accepts only a nonconflicting version-1 update plan for the resolved
-project. It rechecks every current source hash, unique anchor, proposed hash,
-allowed filename and action before emitting any patch bytes. Duplicate JSON
-keys, repeated targets, unsupported fields and symlinks are rejected. No-op
-plans emit an empty patch. Unknown init/upgrade prose migrations cannot be
-exported as if they were exact edits. Owner-review gaps remain gaps; exporting
-a diff neither verifies evidence nor authorizes application.
-
-Reads use directory descriptors and no-follow opens on supported platforms.
-This prevents final-component symlink following, not every possible hostile
-filesystem race. Hash checks describe the source snapshot read during export.
-A later edit can make the patch stale. UTF-8, CRLF and missing final newlines
-are preserved and tested by applying patches only in disposable fixtures.
-The CLI still performs no conditional filesystem or provider writes.
-
-Staging remains separate future work: review the patch in an isolated worktree,
-validate changes there, and explicitly choose any later integration. This
-CLI never creates project branches or review commits automatically.
-
-## Release review
-
-See [CLI/skill parity and release gates](references/cli.md). The standalone CLI
-disables configured Git fsmonitor and clean/process helpers during its local
-inspection; existing legacy hook scripts are unchanged. New tests cover this
-boundary and LF-only diff line splitting for Unicode separators. CI verifies
-source and built-wheel behavior on Linux/macOS and Python 3.10/3.14. No upload,
-release, auto-merge or global-install workflow exists.
-
-Progress presentation: new documents use three toggled parts with readable
-Markdown headings. Latest-day snapshots exclude history and roadmap; historical
-ships retain delivery proof and remain recognized by shipment checks. Existing
-layouts stay supported, and owner VISION is never rewritten for a style refresh.
+No live provider writes are used in QA. No release, merge, global installation,
+background worker, new provider registry or credential store is part of this CLI.

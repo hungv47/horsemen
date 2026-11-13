@@ -9,13 +9,17 @@ Updated: 2026-11-13 · Stage: live · Health: On track
 
 Horsemen now has one public MIT project for its agent skill and CLI.
 
-Next action: Try the read-only inspection on a real project and use the result to choose the next improvement.
+Next action: Review the draft command update and its single-record save limits before any merge.
 
 ## Shipped
 
 - **Easy installation and a project cover** (2026-11-13): The README starts with the skills.sh install command and the original owner-approved cover.
 
 - **One Horsemen project** (2026-11-13): Published source, one version, clear setup, and verification for both ways to use it.
+
+## Ready for review
+
+- **Direct record commands**: Brain, vision, structure and status now have read-only reports and explicit local updates. Whole-project checks remain; planning tools share one menu. Not merged or released.
 
 ## Decisions
 
@@ -31,10 +35,20 @@ Next action: Try the read-only inspection on a real project and use the result t
 
 Existing installed copies are unchanged.
 
+### Command review evidence
+
+- Full local verification passed on 2026-11-13: source tests, installed CLI,
+  packaged skill and legacy hooks. Added coverage for each record, exact-edit
+  validation, isolation, legacy callers and configured knowledge routes;
+  simulated storage and read-back failures use disposable files. Reproduce
+  with CONTRIBUTING.md. Final revision checks remain a draft-PR review gate.
+- Local writes require the caller to exclude other editors. Provider originals
+  still use their authorized host workflow; no live provider writes were tested.
+
 ### Gates
 
 - Local checks pass. Cross-platform results are visible in [Actions](https://github.com/hungv47/horsemen/actions).
-- Automatic document application and live Drive saves remain unavailable.
+- Batch application and live Drive saves remain unavailable. Explicit local single-record updates are pending review.
 
 </details>
 

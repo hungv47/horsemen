@@ -4,7 +4,7 @@ These are agent commands, not shell commands. The optional standalone CLI
 has a deliberately narrower [command contract](cli.md); do not conflate them. Say `horsemen init` or invoke
 `$horsemen init` in a host that supports skill invocation. Accept `horsmen`
 as a conversational spelling alias. Do not install the optional CLI without authorization or pretend that
-`python3 horsemen.py init` runs this workflow. The Python CLI implements
+`python3 horsemen.py init` runs this workflow. The legacy Python script implements
 `check`, internal `hook`, and `hooks install/uninstall/status` only.
 
 ## Route the request
@@ -21,6 +21,29 @@ account, change VISION or bypass provider write holds. Preserve concurrent
 edits, unique owner content and unchanged dates. A denied action stops that
 action; finish independent work. An uncertain write requires a fresh read
 before any retry. Never claim a provider save from a local file or cache.
+
+### brain / vision / structure / status
+
+Read/report just the named record by default: BRAIN.md, VISION.md, STRUCTURE.md,
+or PROGRESS.md (legacy STATUS.md where applicable). No writes, bulk sync,
+companion refresh or provider-original updates. This read-only boundary overrides
+routine maintenance. Report missing content and access limits, not invented facts.
+
+An explicit `horsemen brain update` (likewise the other names) authorizes only
+that record's update within current saved permissions. Read its original, gather
+required evidence, verify owner direction/provider holds where relevant, and
+replace only the supported changed content. Preserve all other records and dates.
+Mention downstream work if useful; do not perform it within this narrow request.
+If the original is provider-backed, use its configured authorized host adapter;
+never substitute a local copy. Fail clearly if input or provider access is missing.
+Distinguish a draft from a verified save. No live real-document writes during QA.
+
+The executable CLI uses `COMMAND --path PATH` and an explicit
+`COMMAND update --changes FILE --exclusive` local path. It requires an exact
+source hash and replacement, not autonomous content generation. Use `--dry-run`
+for review. Do not assert `--exclusive` unless no other editor or sync process
+can write the file during the save. Provider originals remain a host workflow;
+see [CLI parity](cli.md). Existing Brain adapter revision/authorization rules stay intact.
 
 ### init
 
@@ -127,6 +150,7 @@ Show this short menu and one example, without reading private project data:
 
 | Command | Result |
 | --- | --- |
+| brain / vision / structure / status | Read one record; add `update` for an explicitly scoped edit |
 | init | Set up missing project records |
 | update | Refresh changed facts and relevant Brain originals |
 | upgrade | Migrate project documents without losing content |
@@ -136,7 +160,7 @@ Show this short menu and one example, without reading private project data:
 | diagram | Explain connections in an existing or requested visual |
 | help | Show these commands |
 
-Example: `horsemen diagram runtime connections`.
+Example: `horsemen brain` (read only), then `horsemen brain update` for a scoped change.
 No command implies merge, deployment or installation. Ordinary background
 maintenance stays silent; direct requests receive the useful result, and
 necessary permission questions or actionable blockers are never hidden.

@@ -14,6 +14,155 @@ class CLI(unittest.TestCase):
         env=dict(self.env.env, PYTHONPATH=str(SCRIPTS),PYTHONDONTWRITEBYTECODE='1')
         if os.environ.get('HORSEMEN_CLI'): env.pop('PYTHONPATH',None)
         return subprocess.run(cmd+list(args),cwd=cwd or self.root,env=env,text=not binary,capture_output=True)
+    def document_edit(self, command, **overrides):
+        import hashlib
+        names={'brain':'BRAIN.md','vision':'VISION.md','structure':'STRUCTURE.md','status':'PROGRESS.md'}
+        name=names[command]; source=(self.root/name).read_text()
+        edit={'file':name,'source_sha256':hashlib.sha256(source.encode()).hexdigest(),
+              'before':source.splitlines()[0], 'after':source.splitlines()[0]+' revised',
+              'evidence':['Owner supplied correction'], 'owner_agreement':'Owner requested this exact edit'}
+        edit.update(overrides)
+        path=Path(self.tmp.name)/'edit.json'; path.write_text(json.dumps(edit))
+        return str(path)
+    def test_document_default_is_scoped_read_only(self):
+        before={p.name:(p.read_bytes(),p.stat().st_mtime_ns) for p in self.root.glob('*.md')}
+        for command,name in [('brain','BRAIN.md'),('vision','VISION.md'),('structure','STRUCTURE.md'),('status','PROGRESS.md')]:
+            p=self.run_cli(command,'--json'); self.assertEqual(p.returncode,0,p.stdout+p.stderr)
+            d=json.loads(p.stdout); self.assertEqual(d['document'],name)
+            self.assertEqual(d['mode'],'read_only'); self.assertIn('content',d)
+            self.assertTrue(all(x['file']==name for x in d['report']['errors']+d['report']['warnings']))
+        self.assertEqual(before,{p.name:(p.read_bytes(),p.stat().st_mtime_ns) for p in self.root.glob('*.md')})
+    def test_document_ignores_unrelated_broken_record(self):
+        (self.root/'VISION.md').unlink(); (self.root/'VISION.md').symlink_to('/does/not/exist')
+        self.assertEqual(self.run_cli('brain','--json').returncode,0)
+    def test_document_update_isolated_for_every_record(self):
+        for command,name in [('brain','BRAIN.md'),('vision','VISION.md'),('structure','STRUCTURE.md'),('status','PROGRESS.md')]:
+            before={p.name:p.read_bytes() for p in self.root.glob('*.md')}
+            edit=self.document_edit(command)
+            p=self.run_cli(command,'update','--changes',edit,'--exclusive','--json')
+            self.assertEqual(p.returncode,0,p.stdout+p.stderr)
+            self.assertEqual(json.loads(p.stdout)['status'],'updated')
+            after={p.name:p.read_bytes() for p in self.root.glob('*.md')}
+            self.assertEqual([k for k in before if before[k]!=after[k]],[name])
+    def test_document_update_missing_input_or_exclusive_fails(self):
+        before=(self.root/'BRAIN.md').read_bytes()
+        for args in [(),('--exclusive',),('--changes',self.document_edit('brain'))]:
+            self.assertEqual(self.run_cli('brain','update',*args,'--json').returncode,2)
+        self.assertEqual(before,(self.root/'BRAIN.md').read_bytes())
+    def test_document_update_rejects_invalid_or_stale_edits(self):
+        before=(self.root/'BRAIN.md').read_bytes()
+        for override in [{'file':'VISION.md'},{'file':'../BRAIN.md'},{'source_sha256':'0'*64},
+                         {'before':'absent anchor'},{'evidence':[]},{'owner_agreement':''},
+                         {'extra':True},{'after':None}]:
+            p=self.run_cli('brain','update','--changes',self.document_edit('brain',**override),'--exclusive','--json')
+            self.assertEqual(p.returncode,2,p.stdout+p.stderr)
+            self.assertEqual(before,(self.root/'BRAIN.md').read_bytes())
+    def test_document_update_dry_run_and_noop(self):
+        path=self.root/'STRUCTURE.md'; before=(path.read_bytes(),path.stat().st_mtime_ns)
+        p=self.run_cli('structure','update','--changes',self.document_edit('structure'),'--dry-run','--json')
+        self.assertEqual(p.returncode,0,p.stderr); self.assertEqual(json.loads(p.stdout)['status'],'planned')
+        self.assertEqual(before,(path.read_bytes(),path.stat().st_mtime_ns))
+        edit=self.document_edit('structure',after=path.read_text().splitlines()[0])
+        p=self.run_cli('structure','update','--changes',edit,'--exclusive','--json')
+        self.assertEqual(p.returncode,0,p.stderr); self.assertEqual(json.loads(p.stdout)['status'],'no_change')
+        self.assertEqual(before,(path.read_bytes(),path.stat().st_mtime_ns))
+    def test_document_configured_knowledge_is_not_bulk_sync(self):
+        path=self.root/'BRAIN.md'; path.write_text(path.read_text().replace('Brain: None','Brain: Google Drive'))
+        p=self.run_cli('brain','--json'); self.assertEqual(p.returncode,0,p.stdout)
+        self.assertEqual(json.loads(p.stdout)['providers']['status'],'not_checked')
+        edit=self.document_edit('brain')
+        p=self.run_cli('brain','update','--changes',edit,'--exclusive','--provider','drive','--json')
+        self.assertEqual(p.returncode,2); self.assertIn('host',p.stdout)
+        p=self.run_cli('brain','update','--changes',edit,'--exclusive','--json')
+        self.assertEqual(p.returncode,0,p.stdout)
+    def test_document_missing_and_symlink_fail(self):
+        path=self.root/'VISION.md'; path.unlink()
+        self.assertEqual(self.run_cli('vision','--json').returncode,1)
+        path.symlink_to(self.root/'BRAIN.md')
+        self.assertEqual(self.run_cli('vision','--json').returncode,2)
+    def test_status_preserves_legacy_filename(self):
+        (self.root/'PROGRESS.md').rename(self.root/'STATUS.md')
+        p=self.run_cli('status','--json'); self.assertEqual(p.returncode,0,p.stdout)
+        self.assertEqual(json.loads(p.stdout)['document'],'STATUS.md')
+        self.assertFalse((self.root/'PROGRESS.md').exists())
+    def test_document_preserves_crlf_mode_and_other_content(self):
+        import hashlib
+        path=self.root/'STRUCTURE.md'
+        source=path.read_text().replace('\n','\r\n').rstrip('\r\n')
+        path.write_bytes(source.encode()); path.chmod(0o640)
+        edit={'file':'STRUCTURE.md','source_sha256':hashlib.sha256(source.encode()).hexdigest(),
+              'before':'# Structure','after':'# Structure revised','evidence':['test']}
+        data=Path(self.tmp.name)/'crlf.json'; data.write_text(json.dumps(edit))
+        p=self.run_cli('structure','update','--changes',str(data),'--exclusive','--json')
+        self.assertEqual(p.returncode,0,p.stdout+p.stderr)
+        self.assertEqual(path.read_bytes(),source.replace('# Structure','# Structure revised',1).encode())
+        self.assertEqual(path.stat().st_mode & 0o777,0o640)
+    def test_document_rejects_duplicate_json_and_repeat_save(self):
+        edit=Path(self.document_edit('structure')); original=edit.read_text()
+        edit.write_text(original.replace('"file":', '"file":"VISION.md", "file":',1))
+        p=self.run_cli('structure','update','--changes',str(edit),'--exclusive','--json')
+        self.assertEqual(p.returncode,2)
+        edit.write_text(original)
+        self.assertEqual(self.run_cli('structure','update','--changes',str(edit),'--exclusive').returncode,0)
+        self.assertEqual(self.run_cli('structure','update','--changes',str(edit),'--exclusive').returncode,2)
+    def test_document_existing_lock_and_hardlink_fail(self):
+        edit=self.document_edit('structure'); path=self.root/'STRUCTURE.md'; before=path.read_bytes()
+        lock=self.root/'.horsemen-STRUCTURE.md.lock'; lock.write_text('other writer')
+        self.assertEqual(self.run_cli('structure','update','--changes',edit,'--exclusive').returncode,2)
+        self.assertEqual(lock.read_text(),'other writer'); lock.unlink()
+        os.link(path,self.root/'linked.md')
+        self.assertEqual(self.run_cli('structure','update','--changes',edit,'--exclusive').returncode,2)
+        self.assertEqual(before,path.read_bytes()); self.assertFalse(lock.exists())
+    def test_document_read_rejects_update_flags(self):
+        self.assertEqual(self.run_cli('brain','--exclusive','--json').returncode,2)
+    def test_document_both_status_files_fail_without_writes(self):
+        (self.root/'STATUS.md').write_text('Unique old content')
+        self.assertEqual(self.run_cli('status','--json').returncode,2)
+
+    def test_grouped_plan_commands_preserve_legacy_results(self):
+        source=(self.root/'TECHSTACK.md').read_text()
+        changes=self.changes_file(source,source+'\nExtra verified context.\n')
+        for command,args in [('init',()),('upgrade',()),('update',('--changes',changes))]:
+            grouped=self.run_cli('plan',command,*args,'--json')
+            old=self.run_cli(command,'--plan',*args,'--json')
+            self.assertEqual(grouped.returncode,old.returncode)
+            self.assertEqual(json.loads(grouped.stdout),json.loads(old.stdout))
+        plan=Path(self.tmp.name)/'grouped-plan.json'; plan.write_text(grouped.stdout)
+        grouped_patch=self.run_cli('plan','export-patch','--plan-file',str(plan))
+        old_patch=self.run_cli('export-patch','--plan-file',str(plan))
+        self.assertEqual(grouped_patch.returncode,0,grouped_patch.stderr)
+        self.assertEqual(grouped_patch.stdout,old_patch.stdout)
+    def test_status_update_uses_existing_legacy_original(self):
+        edit=Path(self.document_edit('status')); data=json.loads(edit.read_text())
+        data['file']='STATUS.md'; edit.write_text(json.dumps(data))
+        (self.root/'PROGRESS.md').rename(self.root/'STATUS.md')
+        p=self.run_cli('status','update','--changes',str(edit),'--exclusive','--json')
+        self.assertEqual(p.returncode,0,p.stdout+p.stderr)
+        self.assertEqual(json.loads(p.stdout)['document'],'STATUS.md')
+        self.assertFalse((self.root/'PROGRESS.md').exists())
+    def test_named_record_works_without_git(self):
+        self.root=healthy_project(self.env,Path(self.tmp.name)/'standalone',git=False)
+        self.assertEqual(self.run_cli('brain','--json').returncode,0)
+        p=self.run_cli('brain','update','--changes',self.document_edit('brain'),'--exclusive','--json')
+        self.assertEqual(p.returncode,0,p.stdout+p.stderr)
+    def test_document_update_symlink_and_ambiguous_anchor_fail(self):
+        edit=self.document_edit('structure'); original=self.root/'STRUCTURE.md'
+        original.rename(self.root/'source.md'); original.symlink_to(self.root/'source.md')
+        p=self.run_cli('structure','update','--changes',edit,'--exclusive','--json')
+        self.assertEqual(p.returncode,2)
+        original.unlink(); (self.root/'source.md').rename(original)
+        original.write_text('Repeated\nRepeated\n')
+        p=self.run_cli('structure','update','--changes',self.document_edit('structure'),'--exclusive','--json')
+        self.assertEqual(p.returncode,2)
+        self.assertEqual(original.read_text(),'Repeated\nRepeated\n')
+
+    def test_public_help_and_plan_compatibility(self):
+        helptext=self.run_cli('--help').stdout
+        self.assertIn('brain',helptext); self.assertIn('plan',helptext)
+        self.assertNotIn('export-patch',helptext); self.assertNotIn('upgrade',helptext)
+        p=self.run_cli('plan','init','--json'); self.assertEqual(p.returncode,0,p.stderr)
+        self.assertEqual(json.loads(p.stdout)['plan'],self.plan('init'))
+
     def test_detached_head_is_explicit(self):
         self.env.git(self.root,'checkout','--detach','-q')
         d=json.loads(self.run_cli('inspect','--json').stdout)

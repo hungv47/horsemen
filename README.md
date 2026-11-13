@@ -13,12 +13,13 @@ One project, two ways to use it:
 | Use the agent skill to… | Use the CLI to… |
 | --- | --- |
 | Gather context and maintain records with your agent | Check records and inspect a local project |
-| Review connected sources within your existing access | Prepare a change plan and export a review patch |
+| Review connected sources within your existing access | Update one local record with an exact, reviewed edit |
 | Preserve your direction and update the right originals | Get repeatable results without an AI model or account |
 
 Both use the same checker. The CLI has no runtime dependencies beyond Python
-3.10+ and optional Git. It does **not** change project documents or contact
-outside services. Agent workflows can make changes within your instructions.
+3.10+ and optional Git. Default commands only read. Explicit single-record
+updates can save a local edit under an exclusive-writer contract. The CLI
+does not contact outside services.
 
 ## Get started
 
@@ -51,12 +52,28 @@ git clone https://github.com/hungv47/horsemen.git
 cd horsemen
 python3 -m venv .venv
 .venv/bin/python -m pip install .
-.venv/bin/horsemen inspect /path/to/project
-.venv/bin/horsemen check /path/to/project --json
+.venv/bin/horsemen status --path /path/to/project
+.venv/bin/horsemen brain --path /path/to/project --json
 ```
 
 This does not install the agent skill or change host hooks. To run without
 installation: `PYTHONPATH=horsemen/scripts python3 -B -m horsemen_core --help`.
+
+Read one record with `horsemen brain`, `horsemen vision`, `horsemen structure`,
+or `horsemen status`. Use `horsemen check` for all records and `horsemen inspect`
+for local project context. Setup and migration proposals live under `horsemen plan`.
+
+For an explicit local update:
+
+```sh
+horsemen brain update --changes edit.json --dry-run --json
+horsemen brain update --changes edit.json --exclusive --json
+```
+
+The [edit format and safety contract](horsemen/CLI.md#update-exactly-one-record)
+require a source checksum and one exact replacement. `--exclusive` means no
+other editor or sync process writes that record during the save. Missing input
+fails; the command does not invent content or update other records.
 
 ## What stays with your project
 
@@ -75,8 +92,9 @@ originals remain the source of truth; Horsemen does not create a second store.
 This is an **alpha**. Plans and exported patches are for review; they do not
 authorize or apply changes. Local inspection does not check remote pull
 requests, releases, or provider contents. Automatic Drive saves and automatic
-patch application are not available. Linux and macOS are the test targets;
-Windows planning and patch export are unsupported.
+batch patch application are not available. Local single-record updates are
+explicit; provider saves still require the authorized host workflow. Linux
+and macOS are the test targets; Windows planning, export and updates are unsupported.
 
 - [CLI commands and examples](horsemen/CLI.md)
 - [Skill and CLI differences](horsemen/references/cli.md)

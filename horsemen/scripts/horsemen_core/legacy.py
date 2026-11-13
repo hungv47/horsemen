@@ -471,14 +471,15 @@ def codes_of(report):
     return {i["code"] for i in report["errors"] + report["warnings"]}
 
 
-def check(root, top=None, fast=False):
+def check(root, top=None, fast=False, only=None, selected_text=None):
     root = Path(root).resolve()
     report = {"root": str(root), "records": [], "errors": [], "warnings": [], "info": {}}
 
     def add(level, code, file, message):
         report["errors" if level == "error" else "warnings"].append({"code": code, "file": file, "message": message})
 
-    texts = {name: read(root / name) for name in RECORDS + [LEGACY_PROGRESS] + SUPPORTING}
+    texts = {name: (read(root / name) if only is None else selected_text if name == only else None)
+             for name in RECORDS + [LEGACY_PROGRESS] + SUPPORTING}
     report["records"] = [n for n in MARKERS if texts[n] is not None]
     progress_name = "PROGRESS.md"
     if texts["PROGRESS.md"] is not None and texts[LEGACY_PROGRESS] is not None:
@@ -623,6 +624,9 @@ def check(root, top=None, fast=False):
             if not line.startswith("#") and re.search(r"(?i)\b(planned|upcoming|coming soon|will (add|ship|support)|wip|todo|in progress)\b", line):
                 add("warning", "changelog-planned-words", "CHANGELOG.md", f"Possible unshipped work: \"{line.strip()[:80]}\".")
                 break
+    if only is not None:
+        report['errors'] = [item for item in report['errors'] if item['file'] == only]
+        report['warnings'] = [item for item in report['warnings'] if item['file'] == only]
     return report
 
 

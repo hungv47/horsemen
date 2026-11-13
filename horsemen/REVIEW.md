@@ -1,6 +1,43 @@
 # Horsemen review package
 
-## Outcome and scope
+## Current command review
+
+The public menu now centers on brain, vision, structure, status, check, inspect
+and plan. Named-record commands read only one document by default and accept
+an explicit exact local update. The writer requires an exclusive-writer
+contract; it is not a revision-conditional provider adapter. See [CLI.md](CLI.md).
+
+Audit evidence: the prior help exposed help, check, inspect, init, update,
+upgrade and export-patch. Source and installed CLI tests use the plan commands;
+CLI docs use them for setup, migration and patch export. Hooks call the legacy
+script, not these lifecycle commands. The available installed skill guidance
+also preserves the old checker/hook entrypoint. No destructive removal of a
+meaningful caller is justified by this evidence.
+
+- Kept check for whole-project validation and inspect for Git context.
+- Grouped setup, migration and batch review under plan; these workflows still
+  return proposals and never apply them.
+- Removed help and the separate planning/export commands from the main menu.
+  Old spellings remain compatibility aliases with unchanged JSON/exit behavior.
+- Added brain/vision/structure/status and explicit single-record updates.
+  CLI docs and in-repository skill routes use the new surface. Installed copies
+  and external repositories are not changed.
+
+New failure cases: missing record/input, unsupported provider, malformed or
+ambiguous edits, wrong target, missing evidence/owner reference, stale source,
+symlinks/hard links, another writer's lock, storage failure, and failed read-back.
+Tests cover these with temporary projects, including named-record isolation,
+CRLF/mode preservation, no-op timestamps and configured knowledge routes.
+Provider libraries retain their existing mocked authorization/revision tests.
+No real provider document is written during QA.
+
+## Original consolidation review (historical)
+
+The following records the original read-only release design. Its statements
+about the absence of local writes are superseded only by the explicit
+single-record contract above; its provider and batch-application limits remain.
+
+### Outcome and scope
 
 This change keeps the four records and their provider ownership intact, adds
 TECHSTACK as a companion, makes Brain care proactive but quiet, and provides

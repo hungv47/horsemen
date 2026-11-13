@@ -1,54 +1,50 @@
 # Standalone CLI and skill parity
 
-The standalone CLI is an optional pre-release package from the same source as
-this skill. It does not replace the skill's reasoning or host permissions.
-No global installation is required for the skill or its existing hooks.
+The standalone CLI and skill share one source and checker. The skill adds
+reasoning, evidence gathering and authorized host/provider workflows.
 
 | Intent | Agent workflow | Executable CLI |
 | --- | --- | --- |
-| Validate records | `horsemen check` | `horsemen check PATH [--json]` |
-| Inspect | Connected-project review under BRAIN scope | `horsemen inspect PATH [--json]`: local only, no remote reads |
-| Initialize | Gather evidence/owner choices and write missing records within authorization | `horsemen init PATH --plan [--json]`: gaps and draft requirements only |
-| Update | Reconcile supported facts and originals within saved permissions | `horsemen update PATH --plan --changes FILE [--json]`: explicit edits only |
-| Upgrade | Preserve unique legacy content and migrate within authorization | `horsemen upgrade PATH --plan [--json]`: review proposals, no renames |
-| Inspect and update | Full compound workflow; aliases `inspect and update` and legacy `inspect and proceed` | Not implemented; never silently map it to read-only inspect |
-| Diagram | Mermaid or existing show-me-bro workflow, preserving format/location | Not implemented; no hosted uploads or second renderer |
-| Review an exact change | Review the proposed diff with the owner when needed | `horsemen export-patch PATH --plan-file FILE`: stdout only, no application |
-| Help | Command menu without reading private project data | `horsemen help` or `horsemen --help` |
+| One record | `brain`, `vision`, `structure`, `status`: read/report by default | `horsemen brain [--path PATH] [--json]` (same for the other three) |
+| Update one record | Explicit `COMMAND update`; only that original, within current permissions | `horsemen brain update --changes FILE --exclusive`: exact local edit; `--dry-run` only drafts |
+| Validate all records | `check`: read-only | `horsemen check PATH [--json]` |
+| Inspect project | `inspect`: connected review under BRAIN scope | `horsemen inspect PATH [--json]`: local records and Git only |
+| Setup/migration | `init` / `upgrade`: gather missing input and preserve existing content | `horsemen plan init/upgrade PATH`: proposal only |
+| Broad maintenance | `update` / `inspect-and-update`: explicit authorized scope | `horsemen plan update PATH --changes FILE`: proposal only |
+| Review a batch | Review exact changes and permission gaps | `horsemen plan export-patch PATH --plan-file FILE`: stdout, no application |
+| Diagram | Existing Mermaid/show-me-bro workflows | Not implemented |
+| Help | Menu without project reads | `horsemen --help` |
 
-Unknown CLI commands fail rather than starting an agent or changing scope.
-`horsmen` is an agent spelling alias, not a second executable. The original
-`python3 <skill>/scripts/horsemen.py` checker and hook commands remain supported.
-The separate Brain `prepare` script still prepares exact provider snapshots;
-it does not connect a provider or apply CLI plans.
+Named-record commands never imply bulk sync or companion updates. Default
+checks concern only that document; use whole-project `check` for cross-record
+rules. `status` refers to PROGRESS.md, or legacy STATUS.md, not a new record.
+A BRAIN report does not prove that external originals or permissions are current.
 
-## Human checkpoints
+## Local updates and provider limits
 
-Plans, evidence references, hashes, patch exports and owner-agreement strings
-are not approval. The CLI never accepts `--yes` or an approval field to write.
-Keep VISION, BRAIN permissions and provider holds under their existing rules.
-Review exact targets/diffs and unresolved facts before any later manual action.
-Neither a patch export nor a successful test permits merge, deployment,
-provider writes, runtime installation or package publication.
+Local updates require one exact edit, a full source hash, evidence references
+and an explicit exclusive-writer promise. BRAIN/VISION also require an owner
+agreement reference. The agent must check actual current permissions; input
+references cannot grant authority. The command does not reason about evidence,
+interpret arbitrary provider policies or create missing content.
 
-A genuine future write path needs a trusted host decision for the exact plan
-and a supported concurrency contract. Do not weaken the Brain adapter's atomic
-revision requirements to fit a local overwrite. Staging in a separate worktree
-can be designed independently, but is not implemented by this CLI.
+`--exclusive` requires no other editor or sync process to write the target.
+The lock excludes other Horsemen writers, not arbitrary editors. Atomic file
+replacement is not revision-conditional storage. Do not use local mode to
+bypass a provider hold or update a mounted provider file. An unsupported
+`--provider` fails without a local fallback. Provider updates still require
+the existing authorized host and revision-aware adapter; no live connection
+is added to the CLI. Drive Markdown writes remain unsupported.
 
-## Release gate
+## Compatibility and release gate
 
-This is a review pre-release, not a production replacement. Build and test the
-wheel in an isolated environment; preserve the old hook paths and installed
-copies until separately approved. Automated verification runs on Linux/macOS
-and Python 3.10/3.14, but configured jobs are not proof they passed: check the
-exact revision's results. Windows planning/export is unsupported and fails
-closed when no-follow filesystem operations are unavailable.
+Old top-level planning/export spellings and `help` remain hidden compatibility
+aliases with their old behavior. `horsmen` is an agent spelling alias, not an
+executable. Legacy checker/hooks remain supported and are not installed or
+changed by the new CLI. Read-only Git commands disable configured executable
+helpers; old hook behavior is unchanged.
 
-The public repository uses MIT. Publishing to PyPI and global installation
-remain separate actions. A stable release needs
-human review, passing exact-revision checks, an agreed support matrix and a
-separate explicit installation/publication decision. There is no auto-merge.
-
-See [CLI usage and design limits](../CLI.md) for commands,
-JSON states, proof of the write limitation and reproduction steps.
+CI checks Linux/macOS and Python 3.10/3.14. Windows planning/export/update is
+unsupported. Passing tests do not authorize merge, release, install or provider
+writes. See [CLI usage and limits](../CLI.md) for exact input, output, failure
+behavior and test commands.

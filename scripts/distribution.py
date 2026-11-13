@@ -13,7 +13,7 @@ REQUIRED = {
     "scripts/horsemen_core/__init__.py", "scripts/horsemen_core/legacy.py",
     "scripts/horsemen_core/cli.py", "scripts/horsemen_core/__main__.py",
     "scripts/horsemen_core/plans.py", "scripts/horsemen_core/patches.py",
-    "scripts/horsemen_core/git_read.py",
+    "scripts/horsemen_core/git_read.py", "scripts/horsemen_core/documents.py",
 }
 
 
