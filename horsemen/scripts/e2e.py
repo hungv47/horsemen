@@ -353,6 +353,10 @@ def healthy_project(env, root, git=True):
                  "src/app/main.js": "x\n", "src/api/routes.js": "x\n", "docs/decisions.md": "# Decisions\n"})
     if git:
         env.git(root, "init", "-q", "-b", "main")
+        # These repositories are disposable. Background housekeeping would
+        # race byte-for-byte inspection assertions and fixture cleanup.
+        env.git(root, "config", "maintenance.auto", "false")
+        env.git(root, "config", "gc.auto", "0")
         env.git(root, "add", "-A")
         env.git(root, "commit", "-q", "-m", "init", "--date", "2026-10-01T00:00:00")
     return root
