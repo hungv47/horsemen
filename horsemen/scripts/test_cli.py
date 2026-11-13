@@ -268,8 +268,10 @@ class CLI(unittest.TestCase):
         (self.root/'BRAIN.md').unlink(); p=self.run_cli('check','--json')
         self.assertEqual(p.returncode,1); self.assertTrue(json.loads(p.stdout)['report']['errors'])
     def test_non_git_project(self):
-        import shutil
-        shutil.rmtree(self.root/'.git'); p=self.run_cli('inspect','--json')
+        # Construct a non-Git project directly. Deleting a freshly committed
+        # repository can race Git's background maintenance on older Python.
+        root = healthy_project(self.env, Path(self.tmp.name) / 'non-git-project', git=False)
+        p=self.run_cli('inspect','--json',cwd=root)
         d=json.loads(p.stdout); self.assertEqual(p.returncode,0,p.stderr)
         self.assertFalse(d['git']['available'])
     def test_no_records(self):
