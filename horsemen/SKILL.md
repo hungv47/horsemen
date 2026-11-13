@@ -1,6 +1,6 @@
 ---
 name: horsemen
-description: Set up and maintain VISION, PROGRESS, BRAIN, and STRUCTURE, with README, CHANGELOG, and TECHSTACK. Use before project work and before finishing each project task, including discussions and work outside Git, or for "horsemen init/update/upgrade/inspect/inspect-and-update/check/diagram/help", "inspect and proceed", project status, adoption, handoff, knowledge filing, or "horsemen". Preserve the owner's direction, update progress from evidence, and keep knowledge in its agreed location. Legacy STATUS.md is PROGRESS.
+description: Set up and maintain VISION, PROGRESS, BRAIN, and STRUCTURE, with README, CHANGELOG, and TECHSTACK. Use before project work and before finishing each project task, including discussions and work outside Git, or for "horsemen brain/vision/structure/status/init/update/upgrade/inspect/inspect-and-update/check/diagram/help", "inspect and proceed", project status, adoption, handoff, knowledge filing, or "horsemen". Preserve the owner's direction, update progress from evidence, and keep knowledge in its agreed location. Legacy STATUS.md is PROGRESS.
 ---
 
 # Horsemen
@@ -61,12 +61,15 @@ team guides use the destination and available document tools named by BRAIN.
 
 ## Commands
 
-Use [command routing](references/commands.md) for `horsemen init`, `update`,
+Use [command routing](references/commands.md) for `horsemen brain`, `vision`,
+`structure`, `status`, `init`, `update`,
 `upgrade`, `inspect`, `inspect-and-update`, `check`, `diagram` and `help`. These are agent workflows,
 not additional legacy Python script commands. The optional standalone CLI
 implements a smaller deterministic subset; see [CLI parity and release gates](references/cli.md).
 `horsmen` is a conversational alias.
-`inspect` and `check` are read-only; their boundaries override routine upkeep.
+`inspect`, `check`, and named-record commands without `update` are read-only;
+their boundaries override routine upkeep. Named-record updates affect only the
+named original; do not cascade maintenance into other records or provider resources.
 `upgrade` migrates project documents, not the installed skill or dependencies.
 
 ## Inspect and proceed
@@ -307,7 +310,9 @@ public repository for private links.
 For a precise original-document update, use the [Brain engine contract](references/brain-engine.md).
 Its provider-neutral library prepares exact text changes, checks host approval,
 rejects stale originals, verifies writes, and refreshes disposable navigation.
-The CLI only prepares changes; the native Docs adapter is guarded and narrow.
+The Brain preparation script only prepares changes; the native Docs adapter is guarded and narrow.
+The standalone CLI can explicitly edit one local root record under its
+[exclusive-writer contract](CLI.md#update-exactly-one-record); it cannot save provider originals.
 Use the [shared record contract](references/sync.md#shared-update-guarantees) for all four records. Existing
 provider choices, account limits, and ask-before-write rules still apply.
 

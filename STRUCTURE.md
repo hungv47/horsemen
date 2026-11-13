@@ -13,7 +13,7 @@ horsemen/
 │   ├── REVIEW.md           Design decisions and remaining boundaries
 │   ├── references/         Templates and focused workflows
 │   └── scripts/            Compatibility hooks, provider helpers, tests
-│       └── horsemen_core/  Shared checker and CLI implementation
+│       └── horsemen_core/  Shared checker, CLI, and single-record local editor
 ├── scripts/                Build and end-to-end verification
 ├── tests/                  Distribution regression tests
 ├── pyproject.toml          CLI packaging; version comes from shared source
@@ -30,6 +30,8 @@ horsemen/
 ## Commands
 
 - Verify: `.venv/bin/python -B scripts/verify.py --output /tmp/horsemen-verification`.
+- Read one record: `PYTHONPATH=horsemen/scripts python3 -B -m horsemen_core brain --json`.
+- Update one record: see [exact edit input and exclusive-writer contract](horsemen/CLI.md#update-exactly-one-record).
 - Check records: `python3 -B horsemen/scripts/horsemen.py check .`.
 - Run CLI: `PYTHONPATH=horsemen/scripts python3 -B -m horsemen_core --help`.
 

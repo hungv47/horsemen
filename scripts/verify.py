@@ -49,7 +49,7 @@ def main():
         receipt["commit"] = run("revision", ["git", "rev-parse", "HEAD"]).strip()
         receipt["source_dirty"] = bool(run("source-status", ["git", "status", "--porcelain"]).strip())
         run("distribution-tests", [sys.executable, "-B", "-m", "unittest", "discover", "-s", "tests", "-v"])
-        for suite in ("test_cli", "test_progress_layout", "test_techstack", "test_commands",
+        for suite in ("test_cli", "test_documents", "test_progress_layout", "test_techstack", "test_commands",
                       "test_brain", "test_records", "test_drive_adapter"):
             run(suite, [sys.executable, "-B", f"horsemen/scripts/{suite}.py"])
         run("source-hooks", [sys.executable, "-B", "horsemen/scripts/e2e.py", "--output", str(output / "source-hooks.json")])
