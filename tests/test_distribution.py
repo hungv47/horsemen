@@ -1,0 +1,80 @@
+"""Distribution failures: missing resources, drift, leaked files, and overwrites."""
+import hashlib
+import importlib.util
+import json
+from pathlib import Path
+import shutil
+import tempfile
+import unittest
+import zipfile
+
+ROOT = Path(__file__).resolve().parents[1]
+spec = importlib.util.spec_from_file_location("distribution", ROOT / "scripts/distribution.py")
+distribution = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(distribution)
+
+
+class Distribution(unittest.TestCase):
+    def setUp(self):
+        self.temp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.temp.cleanup)
+        self.root = Path(self.temp.name)
+        self.source = self.root / "source"
+        shutil.copytree(ROOT / "horsemen", self.source / "horsemen")
+        self.output = self.root / "artifacts"
+
+    def test_archive_is_complete_and_reproducible(self):
+        archive = distribution.build_skill(self.source, self.output)
+        other = distribution.build_skill(self.source, self.root / "other")
+        self.assertEqual(archive.read_bytes(), other.read_bytes())
+        with zipfile.ZipFile(archive) as package:
+            for path in (self.source / "horsemen").rglob("*"):
+                if path.is_file() and "__pycache__" not in path.parts:
+                    self.assertEqual(package.read(str(path.relative_to(self.source))), path.read_bytes())
+            self.assertIn("horsemen/scripts/horsemen_core/legacy.py", package.namelist())
+            self.assertIn("horsemen/references/templates.md", package.namelist())
+        receipt = json.loads((self.output / "skill-manifest.json").read_text())
+        self.assertEqual(receipt["version"], distribution.version(self.source))
+        self.assertEqual(receipt["sha256"], hashlib.sha256(archive.read_bytes()).hexdigest())
+
+    def test_symlinks_fail_before_output(self):
+        target = self.source / "horsemen/private.md"
+        target.symlink_to(ROOT / "README.md")
+        with self.assertRaises(ValueError):
+            distribution.build_skill(self.source, self.output)
+        self.assertFalse(self.output.exists())
+
+    def test_unknown_files_fail_before_output(self):
+        (self.source / "horsemen/.env").write_text("FAKE_SECRET=fixture")
+        with self.assertRaises(ValueError):
+            distribution.build_skill(self.source, self.output)
+        self.assertFalse(self.output.exists())
+
+    def test_missing_hook_dependency_fails_before_output(self):
+        (self.source / "horsemen/scripts/horsemen_core/legacy.py").unlink()
+        with self.assertRaises(ValueError):
+            distribution.build_skill(self.source, self.output)
+        self.assertFalse(self.output.exists())
+
+    def test_existing_output_is_preserved(self):
+        archive = distribution.build_skill(self.source, self.output)
+        before = archive.read_bytes()
+        with self.assertRaises(FileExistsError):
+            distribution.build_skill(self.source, self.output)
+        self.assertEqual(before, archive.read_bytes())
+
+    def test_executable_mode_is_preserved(self):
+        script = self.source / "horsemen/scripts/horsemen.py"
+        script.chmod(0o755)
+        archive = distribution.build_skill(self.source, self.output)
+        with zipfile.ZipFile(archive) as package:
+            mode = package.getinfo("horsemen/scripts/horsemen.py").external_attr >> 16
+            self.assertEqual(mode & 0o777, 0o755)
+
+    def test_output_cannot_be_inside_source(self):
+        with self.assertRaises(ValueError):
+            distribution.build_skill(self.source, self.source / "horsemen/dist")
+
+
+if __name__ == "__main__":
+    unittest.main()
