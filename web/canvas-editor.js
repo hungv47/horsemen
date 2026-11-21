@@ -316,7 +316,9 @@
   const para = (form, text, cls = null) => form.append(el('p', cls ? { class: cls } : {}, text));
   async function explain(state) {
     const p = project();
-    if (state === 'signin') {
+    if (state === 'signin' && hostedEditor.info().single) {
+      hostedEditor.signIn();
+    } else if (state === 'signin') {
       const go = await ask('Edit canvases of ' + p.repo, form => {
         para(form, 'Editing uses a second GitHub App, Horsemen Editor. It is separate from the viewer and you add it only if you want to edit.');
         const list = el('ul', { class: 'edit-facts' });
@@ -324,9 +326,9 @@
         form.append(list);
       }, [['', 'Cancel'], ['go', 'Continue to GitHub', 'primary']]);
       if (go === 'go') hostedEditor.signIn();
-    } else if (state === 'install') {
-      const again = await ask('Install Horsemen Editor on ' + p.repo, form => {
-        para(form, 'You signed in to the editor, but it is not installed on this repository. Install it on the repositories that you want to edit, then select Check again.');
+    } else if (state === 'install' || state === 'upgrade') {
+      const again = await ask('Manage GitHub access for ' + p.repo, form => {
+        para(form, state === 'upgrade' ? 'An installation owner must approve Contents read and write access in GitHub. Then select Check again.' : 'Add this repository to the app installation, then select Check again.');
         const a = el('a', { href: hostedEditor.info().install_url || '#', target: '_blank', rel: 'noopener', class: 'link-btn' }, 'Open the install page on GitHub'); form.append(a);
       }, [['', 'Cancel'], ['again', 'Check again', 'primary']]);
       if (again === 'again') start();
@@ -644,7 +646,7 @@
         { icon: 'link', label: 'Add a link', hint: 'L', run: askLink }, { icon: 'link', label: 'Connect the two selected elements', hint: 'C', run: connect },
         { icon: 'check', label: 'Save the draft', hint: 'Ctrl S', run: save }, { icon: 'close', label: 'Leave edit mode', hint: 'Done', run: done },
         ...(!prLink.hidden ? [{ icon: 'link', label: prLink.textContent, hint: E.PR_BRANCH, run: () => window.open(prLink.href, '_blank', 'noopener') }] : []),
-        ...(info.signed_in ? [{ icon: 'back', label: 'Stop editing on this site', hint: 'Sign out of the editor', run: () => { stop(); hostedEditor.stop(); } }] : [])];
+        ...(info.signed_in && !info.single ? [{ icon: 'back', label: 'Stop editing on this site', hint: 'Sign out of the editor', run: () => { stop(); hostedEditor.stop(); } }] : [])];
     },
   };
 })();

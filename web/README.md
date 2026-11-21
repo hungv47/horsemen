@@ -18,8 +18,7 @@ Refresh GitHub (in the account menu) repeats discovery. Clear workspace
 removes the in-memory scan; it does not sign out of GitHub. Stop the server
 with Ctrl+C.
 
-The same app also runs as a hosted viewer with GitHub sign-in. It is
-read-only, unless the site offers the optional editor app for canvas files
+The same app also runs as a hosted viewer with GitHub sign-in. The hosted site uses one GitHub App to read records and save canvases
 (see [edit a canvas](#edit-a-canvas-hosted)).
 See [the hosted viewer](../worker/README.md).
 
@@ -201,16 +200,9 @@ table. The rules are in `web/canvas-embeds.js` and `web/canvas-table.js`.
 
 ### Edit a canvas (hosted)
 
-The hosted app can edit the canvas of a record and a board when the site has
-the optional Horsemen Editor app. The local app and the public view stay
-read-only and do not load the edit code.
+Sign in to the hosted app and open a record canvas or a board. Public and local views are read-only.
 
-1. Open a record canvas or a board and select **Edit** in the header. The
-   first time, a dialog explains the permission: Horsemen Editor asks GitHub
-   for Contents: Read and write on the repositories where you install it, and
-   uses it only to save files in `.horsemen/canvas/` and `.horsemen/media/`. Select **Continue to
-   GitHub**. If the editor app is not installed on the repository, the dialog
-   links to its install page.
+1. Select **Edit**. The repository must be selected in the Horsemen installation and your account must have push access. If GitHub asks for updated permissions, the installation owner must approve Contents read and write access.
 2. Edit. A bar shows the actions and the state of the draft.
 
    | Action | Mouse | Keyboard |
@@ -245,8 +237,7 @@ read-only and do not load the edit code.
 
 The draft stays in this browser tab until you save or discard it; **Done**
 asks first. The page warns before it closes with an unsaved draft, and
-sign-out removes drafts. **Stop editing on this site** in Jump signs out of
-the editor app only.
+sign-out removes drafts.
 
 Files that you add (slice 4b):
 

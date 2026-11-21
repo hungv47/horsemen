@@ -7,7 +7,9 @@ Updated: 2026-11-21 · Stage: live · Health: On track
 <details open>
 <summary>Latest day</summary>
 
-Next action: Use the canvas editor and the hosted viewer on real projects and note what to improve; the open audit items are in docs/product/design-audit.md. Still note which you open first: the canvas of a record or its reading view.
+Next action: Finish the single GitHub App migration. Verify a live canvas save after the installation owner approves Contents read and write access.
+
+Use the canvas editor and the hosted viewer on real projects and note what to improve; the open audit items are in docs/product/design-audit.md. Still note which you open first: the canvas of a record or its reading view.
 
 ## Shipped
 

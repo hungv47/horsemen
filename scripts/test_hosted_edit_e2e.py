@@ -1,14 +1,14 @@
 """End-to-end check of canvas editing in the hosted viewer, against a disposable fake GitHub.
 
-Runs the real Worker with `wrangler dev` and both GitHub Apps (viewer and editor) on a fake GitHub.
-A person signs in with the viewer, opts in to the editor, moves a section card, adds a note, connects
+Runs the real Worker with `wrangler dev` and one GitHub App on a fake GitHub.
+A person signs in, moves a section card, adds a note, connects
 the two, and saves one commit. Then a commit from outside arrives while a draft is open (Merge now),
 and a save meets a conflict on the same note (the person takes the GitHub version). Slice 4b: the person
 drops an image, pastes a video address and a CSV table, confirms the public-repository warning, and saves
 one GraphQL commit with the canvas and both files. Then the default
 branch becomes protected (slice 4c): Edit says that saves go to horsemen/canvas, the save makes that
 branch, and the bar links the compare page, then the open pull request. It also checks the keyboard,
-phone width, the themes, the public view, and that a viewer-only sign-in asks for no write permission. Saves screenshots, a recording, and logs to --output (outside the repository).
+phone width, the themes, the public view, and that editing uses the original sign-in. Saves screenshots, a recording, and logs to --output (outside the repository).
 
     python3 scripts/test_hosted_edit_e2e.py --output /tmp/horsemen-edit-check
 """
@@ -83,10 +83,10 @@ class FakeGitHub(BaseHTTPRequestHandler):
             if p == '/repos/example/open': return self.send(200, {'id': 9, 'full_name': 'example/open', 'default_branch': 'main', 'private': False, 'archived': False})
             if not p.startswith('/repos/example/open/'): return self.send(404, {'message': 'Not Found'})
             p = p.replace('/repos/example/open/', '/repos/example/alpha/', 1)
-        elif auth not in ('Bearer ghu_viewer', 'Bearer ghu_editor'): return self.send(401, {'message': 'Bad credentials'})
-        editor = auth == 'Bearer ghu_editor'
+        elif auth != 'Bearer ghu_viewer': return self.send(401, {'message': 'Bad credentials'})
+        editor = auth == 'Bearer ghu_viewer'
         if p == '/user': return self.send(200, {'login': 'operator'})
-        if p == '/user/installations': return self.send(200, {'installations': [{'id': 2 if editor else 1}]})
+        if p == '/user/installations': return self.send(200, {'installations': [{'id': 1, 'permissions': {'contents': 'write'}}]})
         if p in ('/user/installations/1/repositories', '/user/installations/2/repositories'):
             return self.send(200, {'repositories': [{'id': 1, 'full_name': 'example/alpha', 'default_branch': 'main', 'private': True, 'archived': False, 'pushed_at': '2026-11-19T00:00:00Z', 'permissions': {'pull': True, 'push': True}}]})
         if p == '/repos/example/alpha' and editor: return self.send(200, {'full_name': 'example/alpha', 'default_branch': 'main', 'private': True, 'permissions': {'pull': True, 'push': True}})
@@ -123,7 +123,7 @@ class FakeGitHub(BaseHTTPRequestHandler):
         body = json.loads(self.rfile.read(int(self.headers.get('Content-Length') or 0)) or b'{}')
         p = urlsplit(self.path).path
         world['put_tokens'].add(self.headers.get('Authorization', ''))
-        if self.headers.get('Authorization') != 'Bearer ghu_editor': return self.send(403, {'message': 'Resource not accessible by integration'})
+        if self.headers.get('Authorization') != 'Bearer ghu_viewer': return self.send(403, {'message': 'Resource not accessible by integration'})
         if not p.startswith('/repos/example/alpha/contents/'): return self.send(404, {'message': 'Not Found'})
         path = p.split('/contents/', 1)[1]
         with lock:
@@ -150,7 +150,7 @@ class FakeGitHub(BaseHTTPRequestHandler):
         """createCommitOnBranch: the one commit of a save with media on main (slice 4b)."""
         world['graphql'].append(body['query'].split('(')[0])
         world['put_tokens'].add(self.headers.get('Authorization', ''))
-        if self.headers.get('Authorization') != 'Bearer ghu_editor': return self.send(401, {'message': 'Bad credentials'})
+        if self.headers.get('Authorization') != 'Bearer ghu_viewer': return self.send(401, {'message': 'Bad credentials'})
         v = body['variables']
         if not body['query'].startswith('mutation'): return self.send(200, {'data': None, 'errors': [{'type': 'UNEXPECTED', 'message': 'only the mutation'}]})
         with lock:
@@ -168,7 +168,7 @@ class FakeGitHub(BaseHTTPRequestHandler):
 
     def do_PATCH(self):
         body = json.loads(self.rfile.read(int(self.headers.get('Content-Length') or 0)) or b'{}')
-        if self.headers.get('Authorization') != 'Bearer ghu_editor': return self.send(403, {'message': 'Resource not accessible by integration'})
+        if self.headers.get('Authorization') != 'Bearer ghu_viewer': return self.send(403, {'message': 'Resource not accessible by integration'})
         with lock:
             world['ref_writes'].append(('PATCH', urlsplit(self.path).path, body))
             if urlsplit(self.path).path != '/repos/example/alpha/git/refs/heads/' + SIDE or not world['side'] or body.get('force') is not False: return self.send(422, {'message': 'Not allowed here'})
@@ -181,7 +181,7 @@ class FakeGitHub(BaseHTTPRequestHandler):
         if self.path == '/graphql': return self.graphql(json.loads(data))
         if self.path == '/repos/example/alpha/git/refs':
             body = json.loads(data or '{}')
-            if self.headers.get('Authorization') != 'Bearer ghu_editor': return self.send(403, {'message': 'Resource not accessible by integration'})
+            if self.headers.get('Authorization') != 'Bearer ghu_viewer': return self.send(403, {'message': 'Resource not accessible by integration'})
             with lock:
                 world['ref_writes'].append(('POST', self.path, body))
                 if body.get('ref') != 'refs/heads/' + SIDE or world['side'] or body.get('sha') != world['rev']: return self.send(422, {'message': 'Reference already exists'})
@@ -212,8 +212,8 @@ github = f'http://127.0.0.1:{fake.server_port}'
 origin = f'http://localhost:{args.port}'
 log = []
 variables = {'GITHUB_API': github, 'GITHUB_WEB': github, 'GITHUB_CLIENT_ID': 'Iv1.fictional', 'GITHUB_CLIENT_SECRET': 'fictional',
-             'GITHUB_APP_SLUG': 'horsemen-fictional', 'EDITOR_CLIENT_ID': 'Iv1.editor', 'EDITOR_CLIENT_SECRET': 'fictional-editor',
-             'EDITOR_APP_SLUG': 'horsemen-editor-fictional', 'SESSION_KEY': base64.b64encode(secrets.token_bytes(32)).decode(), 'POLL_SECONDS': '5'}
+             'GITHUB_APP_SLUG': 'horsemen-fictional', 'GITHUB_APP_MODE': 'single',
+             'SESSION_KEY': base64.b64encode(secrets.token_bytes(32)).decode(), 'POLL_SECONDS': '5'}
 local_wrangler = root / 'worker/node_modules/.bin/wrangler'
 command = [str(local_wrangler) if local_wrangler.exists() else 'bunx', *([] if local_wrangler.exists() else ['wrangler']), 'dev', '--port', str(args.port), '--ip', '127.0.0.1', '--local', '--local-upstream', f'localhost:{args.port}', '--show-interactive-dev-session=false', '--persist-to', str(args.output / 'wrangler-state')]
 for k, v in variables.items(): command += ['--var', f'{k}:{v}']
@@ -288,29 +288,19 @@ try:
 
     # Sign-in page: the promise is true with the editor app present.
     browser('open', origin)
-    assert value("document.body.innerText.includes('Read-only by default.') && !document.body.innerText.includes('never writes')"), 'the sign-in page states the new promise'
+    assert value("document.body.innerText.includes('One GitHub sign-in.') && !document.body.innerText.includes('never writes')"), 'the sign-in page states the new promise'
     shot('01-sign-in.png')
     browser('eval', 'document.querySelector("a.btn").scrollIntoView({block:"center"})'); browser('click', 'a.btn')
     until("document.querySelector('meta[name=horsemen-mode]')?.content === 'hosted' && document.body.dataset.state === 'ready'")
-    assert world['authorize'] == ['Iv1.fictional'], 'viewer sign-in asks only the viewer app: no write permission request'
+    assert world['authorize'] == ['Iv1.fictional'], 'one GitHub authorization'
     browser('eval', 'window.__errors=[];window.__csp=[];addEventListener("error",e=>__errors.push(String(e.message)));document.addEventListener("securitypolicyviolation",e=>__csp.push(e.violatedDirective+" "+e.blockedURI))')
     browser('click', '[data-canvas="progress"]')
     until("canvasKey === 'progress' && document.querySelectorAll('.section-card').length === 2 && !document.querySelector('#edit-canvas').hidden")
     shot('02-before-edit.png')
     browser('record', 'start', str(args.output / 'edit-flow.webm'))
 
-    # Edit without the editor app: the app explains the permission; the person opts in.
     browser('click', '#edit-canvas')
-    until("document.querySelector('#edit-dialog').open && document.querySelector('#edit-dialog').innerText.includes('Contents: Read and write')")
-    shot('03-editor-opt-in.png')
-    answer('go')
-    deadline = time.time() + 20
-    while 'Iv1.editor' not in world['tokens'] and time.time() < deadline: time.sleep(0.2)
-    until("location.pathname + location.search === '/example/alpha?canvas=progress' && document.body.dataset.state === 'ready' && typeof canvasKey !== 'undefined' && canvasKey === 'progress'")
-    assert world['authorize'] == ['Iv1.fictional', 'Iv1.editor'] and world['tokens'][-1] == 'Iv1.editor', (world['authorize'], world['tokens'])
-    browser('eval', 'window.__errors=[];window.__csp=[];addEventListener("error",e=>__errors.push(String(e.message)));document.addEventListener("securitypolicyviolation",e=>__csp.push(e.violatedDirective+" "+e.blockedURI))')
-    until("!document.querySelector('#edit-canvas').hidden")
-    browser('click', '#edit-canvas')
+    assert world['authorize'] == ['Iv1.fictional']
     until("!document.querySelector('#edit-bar').hidden && document.querySelector('#edit-status').textContent === 'No changes'")
 
     # Move a section card, add a note, connect them, and save one commit.
@@ -340,7 +330,7 @@ try:
     assert len(world['commits']) == 1, world['commits']
     first = world['commits'][0]
     assert first['message'] == 'canvas(progress): add 2, connect 1 [skip ci]' and first['branch'] == 'main' and first['path'] == CANVAS
-    assert world['put_tokens'] == {'Bearer ghu_editor'}, 'only the editor token writes'
+    assert world['put_tokens'] == {'Bearer ghu_viewer'}, 'the signed-in user token writes'
     doc = saved()
     assert sorted(n['id'] for n in doc['nodes']) == sorted([note_id, 's-up-next']) and doc['edges'][0]['fromNode'] == note_id
     assert {'file': 'PROGRESS.md', 'subpath': '#Up next'}.items() <= next(n for n in doc['nodes'] if n['id'] == 's-up-next').items()
@@ -441,7 +431,7 @@ try:
     until("document.querySelector('#toast').textContent.includes('Videos are not stored')", 10)
     browser('click', '#edit-discard'); answer('discard')
     until("document.querySelector('#edit-status').textContent === 'No changes' && document.querySelectorAll('.canvas-node[data-kind=image]').length === 1", 10)
-    assert world['put_tokens'] == {'Bearer ghu_editor'}, 'only the editor token writes'
+    assert world['put_tokens'] == {'Bearer ghu_viewer'}, 'the signed-in user token writes'
     browser('eval', 'projects[current].private = true')
     browser('record', 'stop')
     assert value("JSON.stringify([window.__errors, window.__csp])") == [[], []], 'no script errors and nothing broke the CSP'
@@ -532,10 +522,10 @@ try:
     errors, csp = value("JSON.stringify([window.__errors, window.__csp])")
     assert errors == [] and csp == [], (errors, csp)
 
-    # Sign-out revokes both tokens and removes drafts; a viewer-only sign-in asks for no write permission.
+    # Sign-out revokes both tokens and removes drafts; editing uses the original sign-in.
     browser('click', '#menu-toggle'); browser('click', '#sign-out')
     until("document.body.innerText.includes('Sign in with GitHub')")
-    assert sorted(world['revoked']) == ['Iv1.editor', 'Iv1.fictional'], world['revoked']
+    assert sorted(world['revoked']) == ['Iv1.fictional'], world['revoked']
     authorize = len(world['authorize'])
     browser('eval', 'document.querySelector("a.btn").scrollIntoView({block:"center"})'); browser('click', 'a.btn')
     until("document.body.dataset.state === 'ready'")
@@ -543,8 +533,8 @@ try:
     browser('open', origin + '/example/alpha?canvas=progress')
     until("typeof canvasKey !== 'undefined' && canvasKey === 'progress' && !document.querySelector('#edit-canvas').hidden", 20)
     browser('click', '#edit-canvas')
-    until("document.querySelector('#edit-dialog').open")
-    answer('')
+    until("!document.querySelector('#edit-bar').hidden")
+    browser('click', '#edit-done')
     assert value("Object.keys(sessionStorage).filter(k => k.startsWith('horsemen.draft')).length") == 0
     # The public view has no edit control and no edit script.
     browser('click', '#menu-toggle'); browser('click', '#sign-out')

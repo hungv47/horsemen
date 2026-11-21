@@ -1,9 +1,7 @@
 # Hosted viewer
 
 A Cloudflare Worker that serves the Horsemen visual workspace to anyone who
-signs in with GitHub. It keeps no project data. The viewer is read-only. An
-optional second GitHub App, Horsemen Editor, lets a person save canvas edits;
-see [canvas editing](#canvas-editing).
+signs in with GitHub. It keeps no project data. One GitHub App supports reading and saving canvas edits on selected repositories. Public viewing requires no sign-in.
 
 ## How it works
 
@@ -96,25 +94,8 @@ browser ──/gh/* (CSRF token + encrypted cookie)──▶ Worker ──user t
 A person can move elements, add and edit notes, add images, tables, links,
 and players, connect and delete elements on a record canvas or a board, and
 save. Each save is one commit by
-that person. Editing needs a second GitHub App, **Horsemen Editor**, with
-Contents: Read and write. The viewer app does not change, so a person who only
-reads sees no new permission request.
+that person. The Worker uses the signed-in person's token for the save. The installation must grant Contents read and write access, and the person must have push access to the repository.
 
-```text
-browser ──POST /write/canvas (CSRF token + cookie with editor token)──▶ Worker ──editor token──▶ GitHub
-           { repo, root, canvas, base, text, media? }               checks, builds the paths, one commit
-```
-
-- **Opt-in.** In edit mode, Edit explains the permission. **Continue to
-  GitHub** starts `/auth/edit/login`. The editor sign-in needs a viewer
-  session of the same GitHub account; a token of another account is revoked
-  and not kept. The editor token goes into the same encrypted cookie, in its
-  own field. Reads always use the viewer token; writes always use the editor
-  token. Sign-out revokes both tokens. **Stop editing on this site** (in
-  Jump) revokes only the editor token.
-- **Install.** The person installs Horsemen Editor on the repositories that
-  they want to edit. `GET /write/access?repo=` tells the app whether the
-  editor app is installed there and whether the person can push.
 - **The write route.** `POST /write/canvas` is the only write. It needs the
   session cookie with an editor token, an `Origin` header of this site, the
   CSRF token, `Content-Type: application/json`, and a body of 6 MiB or less.
@@ -191,19 +172,7 @@ organization. The script saves `GITHUB_CLIENT_ID`, `GITHUB_CLIENT_SECRET`,
 prints them. It discards the app private key, which read-only user access
 does not need. Then install the app from the link that the script prints.
 
-Optional, for canvas editing: create the editor app. It saves
-`EDITOR_CLIENT_ID`, `EDITOR_CLIENT_SECRET`, and `EDITOR_APP_SLUG`, and uses
-the same `SESSION_KEY`. The script opens the same kind of local page:
-
-```sh
-bun scripts/create-github-app.mjs --editor --origin https://your.domain
-bun scripts/create-github-app.mjs --editor --origin https://your.domain --print-manifest   # see the request first
-```
-
-The editor app asks for Contents: Read and write and Metadata: Read only, and
-its callback is `/auth/edit/callback`. To turn editing off, delete the three
-editor secrets with `bunx wrangler secret delete <name>`; the instance is a
-viewer again.
+For an existing installation, keep the primary app registration, callback, secrets, and session key. Change its Contents permission to read and write. Keep Metadata and Pull requests at read-only. Each installation owner approves the change in GitHub. The default Worker configuration uses `GITHUB_APP_MODE=single`. An installation awaiting approval can still view records. Verify a save on a selected test repository before retiring any previous editor registration. Older self-hosted deployments can retain the separate editor by omitting the single-app setting.
 
 Before the first deploy with editing, check the GitHub calls on a disposable
 repository that you own. The name must contain `check` or `disposable`. The

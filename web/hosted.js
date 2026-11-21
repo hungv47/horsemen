@@ -271,7 +271,7 @@
   if (!PUBLIC) fetch('/api/session', { headers: headers(), cache: 'no-store' }).then(r => r.ok ? r.json() : null).then(info => {
     if (!info) return;
     pollSeconds = Math.max(5, Number(info.poll_seconds) || 60); installURL = info.install_url;
-    if (info.editor && info.editor.available) { editorInfo = { available: true, signed_in: !!info.editor.signed_in, install_url: String(info.editor.install_url || '') }; document.dispatchEvent(new CustomEvent('horsemen:editor', { detail: editor.info() })); }
+    if (info.editor && info.editor.available) { editorInfo = { available: true, single: !!info.editor.single, signed_in: !!info.editor.signed_in, install_url: String(info.editor.install_url || '') }; document.dispatchEvent(new CustomEvent('horsemen:editor', { detail: editor.info() })); }
     for (const id of ['choose-repos', 'connect-repo']) { const link = document.getElementById(id); if (link) { link.href = installURL; link.hidden = false; } }
     if (watched) watch(watched);
   }).catch(() => {});

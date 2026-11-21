@@ -50,7 +50,8 @@ function configured(env) {
   catch { return false; }
 }
 /* The editor app is optional. Without its three secrets the instance is a viewer, as before. */
-const editorConfigured = env => !!(env.EDITOR_CLIENT_ID && env.EDITOR_CLIENT_SECRET && env.EDITOR_APP_SLUG);
+const singleApp = env => env.GITHUB_APP_MODE === "single";
+const editorConfigured = env => singleApp(env) || !!(env.EDITOR_CLIENT_ID && env.EDITOR_CLIENT_SECRET && env.EDITOR_APP_SLUG);
 const credentials = (env, app) => app === 'editor' ? [env.EDITOR_CLIENT_ID, env.EDITOR_CLIENT_SECRET] : [env.GITHUB_CLIENT_ID, env.GITHUB_CLIENT_SECRET];
 const web = env => (env.GITHUB_WEB || 'https://github.com').replace(/\/$/, '');
 const apiBase = env => (env.GITHUB_API || 'https://api.github.com').replace(/\/$/, '');
@@ -155,7 +156,9 @@ ul{margin:18px 0 26px;padding:0;list-style:none;border-top:1px solid var(--rule)
   return respond(html, status, { 'content-type': 'text/html; charset=utf-8', ...headers });
 }
 /* The first promise depends on the instance: with no editor app, this site never writes. */
-const writePromise = env => editorConfigured(env)
+const writePromise = env => singleApp(env)
+  ? '<li><b>One GitHub sign-in.</b> Install Horsemen on selected repositories. Saving a canvas requires Contents read and write access and creates a commit in your name.</li>'
+  : editorConfigured(env)
   ? '<li><b>Read-only by default.</b> Sign-in asks for read access only. Canvas editing is a separate, optional editor app; each save is one commit by you.</li>'
   : '<li><b>Read-only.</b> This site never writes to your repositories.</li>';
 const signInPage = (env, headers = {}, target = null, next = null) => page('Horsemen · Sign in', `
@@ -331,7 +334,7 @@ async function staticFile(env, request, path) {
 /* ---------------------------------------------------------------- editing (slice 4a)
    The editor app is a second GitHub App with Contents: Read and write. A person opts in from the app.
    Its sign-in needs a viewer session of the same GitHub account; its token is used only below. */
-const editorInstallURL = env => `${web(env)}/apps/${env.EDITOR_APP_SLUG}/installations/new`;
+const editorInstallURL = env => `${web(env)}/apps/${singleApp(env) ? env.GITHUB_APP_SLUG : env.EDITOR_APP_SLUG}/installations/new`;
 async function editorSignIn(env, request, session) {
   const url = new URL(request.url), p = url.searchParams;
   if (!editorConfigured(env)) return page('Horsemen', '<h1>Editing is not set up on this site.</h1><p><a class="btn" href="/">Back to the viewer</a></p>', 404);
@@ -373,6 +376,16 @@ async function editorSignIn(env, request, session) {
 /* The editor token for one request. An expired token refreshes with the editor app.
    Result: { token, cookie } (cookie is set when the session changed), or { token: null, cookie } to sign in again. */
 async function editorToken(env, session) {
+  if (singleApp(env)) {
+    if (!session.e || Date.now() < session.e) return { token: session.t, cookie: null };
+    if (session.r && (!session.re || Date.now() < session.re)) {
+      try {
+        const next = newSession(await tokenRequest(env, { grant_type: 'refresh_token', refresh_token: session.r }), session);
+        return { token: next.t, cookie: await writeSession(env, next) };
+      } catch { /* GitHub requires a new login. */ }
+    }
+    return { token: null, cookie: clearCookie(SESSION) };
+  }
   const w = session.w;
   if (!w || !w.t) return { token: null, cookie: null };
   if (!w.e || Date.now() < w.e) return { token: w.t, cookie: null };
@@ -411,7 +424,7 @@ const base64 = bytes => { let out = ''; for (let i = 0; i < bytes.length; i += 0
 const fromBase64 = text => new TextDecoder('utf-8', { fatal: true }).decode(Uint8Array.from(atob(String(text).replace(/\s+/g, '')), c => c.charCodeAt(0)));
 const WRITE_ERRORS = {
   signin: [403, 'Sign in to the editor again.', 'editor-signin'],  // 403: the viewer session is still valid.
-  install: [403, 'The Horsemen Editor app is not installed on this repository, or it cannot write there. Install it, then save again.', 'editor-install'],
+  install: [403, 'Check the GitHub App installation for this repository and approve Contents read and write access, then save again.', 'editor-install'],
   push: [403, 'Your GitHub account cannot push to this repository.', 'no-push'],
   github: [502, 'GitHub did not accept the save. Try again.', 'github'],
   refused: [409, 'GitHub refused the save on the default branch and on horsemen/canvas. A rule of this repository protects both. Your draft stays in this tab. Ask an owner of the repository to allow the branch horsemen/canvas, then save again.', 'refused'],
@@ -558,7 +571,7 @@ async function writeCanvas(env, request, session) {
   if ((request.headers.get('content-type') || '').split(';')[0].trim().toLowerCase() !== 'application/json') return json({ error: 'Send JSON.' }, 415);
   const declared = request.headers.get('content-length');
   if (declared !== null && (!/^[0-9]{1,10}$/.test(declared) || Number(declared) > MAX_WRITE)) return json({ error: 'The request is too large.' }, 413);
-  if (!session.w) return writeError('signin');
+  if (!singleApp(env) && !session.w) return writeError('signin');
   const raw = await readCapped(request, MAX_WRITE);
   if (raw === null) return json({ error: 'The request is too large.' }, 413);
   let input;
@@ -814,6 +827,7 @@ async function writeAccess(env, request, session) {
         for (let p = 1; p <= 20; p++) {
           const list = (await gh(`/user/installations/${installation.id}/repositories?per_page=100&page=${p}`)).repositories || [];
           const found = list.find(r => String(r.full_name).toLowerCase() === want);
+          if (found && singleApp(env) && installation.permissions?.contents !== 'write') return json({ editor: 'upgrade' }, 200, cookieOf(cookie));
           if (found) return json({ editor: found.permissions?.push === true ? 'ok' : 'no-push' }, 200, cookieOf(cookie));
           if (list.length < 100) break;
         }
@@ -879,6 +893,9 @@ async function handle(request, env) {
     return session ? appPage(env, request, session) : signInPage(env, {}, shared, path + url.search);
   }
 
+  if (singleApp(env) && (path === '/auth/edit/login' || path === '/auth/edit/callback')) {
+    return redirect('/auth/login?next=' + encodeURIComponent(safeNext(url.searchParams.get('next'))));
+  }
   if (path === '/auth/edit/login' || path === '/auth/edit/callback') return editorSignIn(env, request, session);
   const guarded = path.startsWith('/api/') || path.startsWith('/gh/') || path.startsWith('/write/') || path === '/auth/refresh' || path === '/auth/logout' || path === '/auth/edit/logout';
   if (!guarded) return staticFile(env, request, path);
@@ -888,7 +905,7 @@ async function handle(request, env) {
   if (path === '/api/session') {
     if (request.method !== 'GET') return json({ error: 'Use GET.' }, 405);
     return json({ login: session.l, expires_at: session.e || null, install_url: `${web(env)}/apps/${env.GITHUB_APP_SLUG}/installations/new`, poll_seconds: Number(env.POLL_SECONDS) || 60,
-      editor: editorConfigured(env) ? { available: true, signed_in: !!session.w, install_url: editorInstallURL(env) } : { available: false } });
+      editor: editorConfigured(env) ? { available: true, ...(singleApp(env) ? { single: true } : {}), signed_in: singleApp(env) || !!session.w, install_url: editorInstallURL(env) } : { available: false } });
   }
   if (path === '/auth/refresh') {
     if (request.method !== 'POST') return json({ error: 'Use POST.' }, 405);

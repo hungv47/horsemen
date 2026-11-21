@@ -59,11 +59,11 @@ const PATH = '.horsemen/canvas/progress.canvas';
 const canvasText = nodes => F.canonical({ horsemen: { version: 1 }, nodes, edges: [] });
 const NOTE = { id: 'note-first', type: 'text', x: 0, y: 0, width: 320, height: 140, text: 'Ask the operators.' };
 const ORIGINAL = canvasText([NOTE]);
-function fakeRepo({ files = { [PATH]: ORIGINAL }, push = true, putConflicts = 0, putStatus = null, repoStatus = 200, installed = true, onConflict = null } = {}) {
+function fakeRepo({ expectedToken = 'ghu_editor', files = { [PATH]: ORIGINAL }, push = true, putConflicts = 0, putStatus = null, repoStatus = 200, installed = true, onConflict = null } = {}) {
   const repo = { files: { ...files }, puts: [], commits: 0 };
   mockFetch(async req => {
     const u = new URL(req.url), p = decodeURIComponent(u.pathname);
-    if (req.headers.get('authorization') !== 'Bearer ghu_editor') return json({ message: 'Bad credentials for this test' }, 401);
+    if (req.headers.get('authorization') !== 'Bearer ' + expectedToken) return json({ message: 'Bad credentials for this test' }, 401);
     if (p === '/repos/example/alpha') return repoStatus === 200 ? json({ full_name: 'example/alpha', default_branch: 'trunk', private: true, permissions: { pull: true, push } }) : json({ message: 'private detail' }, repoStatus);
     if (p === '/user/installations') return json({ installations: installed ? [{ id: 9 }] : [] });
     if (p === '/user/installations/9/repositories') return json({ repositories: [{ id: 1, full_name: 'example/alpha', permissions: { pull: true, push } }, { id: 2, full_name: 'example/other', permissions: { pull: true, push: false } }] });
@@ -385,4 +385,27 @@ test('the sign-in page no longer says that Horsemen never writes, and says what 
   assert.match(html, /editor app/i);
   const viewerOnly = await (await call('/', {}, env({ EDITOR_CLIENT_ID: '', EDITOR_CLIENT_SECRET: '', EDITOR_APP_SLUG: '' }))).text();
   assert.match(viewerOnly, /<b>Read-only\.<\/b> This site never writes to your repositories\./, 'an instance without the editor keeps the read-only promise');
+});
+
+test('single installation handles a save after one login and ignores legacy editor credentials', async () => {
+  const e = env({ GITHUB_APP_MODE: 'single' });
+  const s = await signIn(e);
+  const headers = { cookie: s.cookie, 'x-horsemen-session': s.csrf };
+  const info = await (await call('/api/session', { headers }, e)).json();
+  assert.equal(info.editor.install_url, info.install_url);
+  assert.equal(info.editor.signed_in, true);
+  const repo = fakeRepo({ expectedToken: 'ghu_viewer' });
+  assert.equal((await post({ headers }, body(), {}, e)).status, 200);
+  assert.equal(repo.commits, 1);
+});
+
+
+test('single app requests an installation upgrade when the repository is still read-only', async () => {
+  const e = env({ GITHUB_APP_MODE: 'single', EDITOR_CLIENT_ID: '', EDITOR_CLIENT_SECRET: '', EDITOR_APP_SLUG: '' });
+  const s = await signIn(e);
+  const headers = { cookie: s.cookie, 'x-horsemen-session': s.csrf };
+  mockFetch(async req => req.url.includes('/repositories?')
+    ? json({ repositories: [{ full_name: 'example/alpha', permissions: { push: true } }] })
+    : json({ installations: [{ id: 9, permissions: { contents: 'read' } }] }));
+  assert.equal((await (await call('/write/access?repo=example/alpha', { headers }, e)).json()).editor, 'upgrade');
 });

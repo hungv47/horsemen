@@ -13,5 +13,5 @@
   "preview_urls": false,
   // No request logs: URLs can name private repositories.
   "observability": { "enabled": false },
-  "vars": { "POLL_SECONDS": "60" }
+  "vars": { "POLL_SECONDS": "60", "GITHUB_APP_MODE": "single" }
 }

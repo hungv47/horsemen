@@ -30,7 +30,11 @@ export const APPS = {
     secrets: { client_id: 'EDITOR_CLIENT_ID', client_secret: 'EDITOR_CLIENT_SECRET', slug: 'EDITOR_APP_SLUG' },
   },
 };
-export function manifest({ kind = 'viewer', name, origin, port, dev }) {
+APPS.single = {
+  ...APPS.viewer, name: 'Horsemen', description: 'View project records and save canvas edits on selected repositories.',
+  permissions: { ...APPS.viewer.permissions, contents: 'write' },
+};
+export function manifest({ kind = 'single', name, origin, port, dev }) {
   const app = APPS[kind];
   return {
     name: name || app.name, url: origin, description: app.description,
@@ -44,7 +48,7 @@ export function manifest({ kind = 'viewer', name, origin, port, dev }) {
 
 function main() {
   const args = Object.fromEntries(process.argv.slice(2).reduce((out, arg, i, all) => (arg.startsWith('--') ? [...out, [arg.slice(2), all[i + 1] && !all[i + 1].startsWith('--') ? all[i + 1] : 'true']] : out), []));
-  const kind = args.editor === 'true' ? 'editor' : 'viewer', spec = APPS[kind];
+  const kind = args.editor === 'true' ? 'editor' : args['viewer-only'] === 'true' ? 'viewer' : 'single', spec = APPS[kind];
   const origin = (args.origin || '').replace(/\/$/, '');
   if (!/^https:\/\/[a-z0-9.-]+$/.test(origin)) { console.error('Use --origin https://your.domain'); process.exit(2); }
   if (kind === 'editor' && args['session-key'] === 'true') { console.error('--session-key belongs to the viewer app. The editor app uses the same session key.'); process.exit(2); }
